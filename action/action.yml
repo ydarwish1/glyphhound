@@ -1,0 +1,114 @@
+name: "GlyphHound chat-template scan"
+description: >-
+  Scan a model file / Hugging Face repo / Ollama model for code-executing chat templates
+  (load-time RCE, CVE-2024-34359 class) and upload the findings to GitHub code scanning as SARIF.
+  Deterministic, parse-only, no weights downloaded.
+author: "Yusif Darwish"
+branding:
+  icon: "shield"
+  color: "purple"
+
+inputs:
+  ref:
+    description: "What to scan: a local .gguf/template path, a .gguf URL, a Hugging Face repo id (owner/name), or an Ollama model name."
+    required: true
+  source:
+    description: "How to interpret ref: auto | file | gguf | gguf-url | hf | ollama."
+    required: false
+    default: "auto"
+  file:
+    description: "Optional .gguf filename inside a Hugging Face repo (without it, the repo's canonical template is read)."
+    required: false
+    default: ""
+  revision:
+    description: "Git revision / commit SHA for a Hugging Face repo (pin a SHA for determinism)."
+    required: false
+    default: "main"
+  threshold:
+    description: "Minimum severity of a reachable finding that gates: critical | high."
+    required: false
+    default: "high"
+  sarif-file:
+    description: "Path to write the SARIF report to."
+    required: false
+    default: "glyphhound.sarif"
+  upload-sarif:
+    description: "Upload the SARIF to GitHub code scanning (requires security-events: write)."
+    required: false
+    default: "true"
+  fail-on-finding:
+    description: "Fail the job when the scan gates (a reachable finding) or errors."
+    required: false
+    default: "true"
+  python-version:
+    description: "Python version to run GlyphHound under."
+    required: false
+    default: "3.12"
+
+outputs:
+  exit-code:
+    description: "GlyphHound exit code: 0 clean, 1 a reachable finding gated, 2 the scan could not run."
+    value: ${{ steps.scan.outputs.exit-code }}
+  sarif-file:
+    description: "Path to the written SARIF report."
+    value: ${{ inputs.sarif-file }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install GlyphHound
+      shell: bash
+      # Install from this action's own repo checkout, so the Action works without a PyPI release.
+      run: pip install "${{ github.action_path }}/.."
+
+    - name: Scan
+      id: scan
+      shell: bash
+      # Pass inputs via env, NOT via ${{ }} interpolation into the script body, so a value like
+      # `foo; rm -rf /` cannot inject shell commands (GitHub's recommended untrusted-input pattern).
+      env:
+        GH_REF: ${{ inputs.ref }}
+        GH_SOURCE: ${{ inputs.source }}
+        GH_FILE: ${{ inputs.file }}
+        GH_REVISION: ${{ inputs.revision }}
+        GH_THRESHOLD: ${{ inputs.threshold }}
+        GH_SARIF: ${{ inputs.sarif-file }}
+      run: |
+        set +e
+        FILE_ARG=""
+        if [ -n "$GH_FILE" ]; then FILE_ARG="--file $GH_FILE"; fi
+        glyphhound scan "$GH_REF" \
+          --source "$GH_SOURCE" \
+          $FILE_ARG \
+          --revision "$GH_REVISION" \
+          --threshold "$GH_THRESHOLD" \
+          --format sarif > "$GH_SARIF"
+        code=$?
+        echo "exit-code=$code" >> "$GITHUB_OUTPUT"
+        echo "GlyphHound exit code: $code (0 clean / 1 finding gated / 2 scan error)"
+        exit 0
+
+    - name: Upload SARIF to code scanning
+      # Only a clean (0) or finding (1) run produced a valid SARIF; a scan error (2) wrote none.
+      if: ${{ inputs.upload-sarif == 'true' && steps.scan.outputs.exit-code != '2' }}
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: ${{ inputs.sarif-file }}
+        category: glyphhound
+
+    - name: Enforce result
+      if: ${{ inputs.fail-on-finding == 'true' && steps.scan.outputs.exit-code != '0' }}
+      shell: bash
+      run: |
+        code="${{ steps.scan.outputs.exit-code }}"
+        if [ "$code" = "1" ]; then
+          echo "::error::GlyphHound found a reachable code-execution sink in the chat template."
+        else
+          echo "::error::GlyphHound could not complete the scan (exit $code)."
+        fi
+        exit 1

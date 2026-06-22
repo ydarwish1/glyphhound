@@ -1,0 +1,13 @@
+{#-
+  MARKER FIXTURE — Jinja2 SSTI via the |attr() filter pivot (ARCHITECTURE.md §4).
+  Attackers use |attr('__class__') instead of .__class__ to dodge naive dot-access
+  string scanners. This walks ()'s type up to __subclasses__ — the standard escape
+  to reach arbitrary Python classes.
+
+  HARMLESS: the analyzer only parses + walks this AST; it is never rendered, and the
+  chain is left dangling (no real class is selected or invoked). MARKER only
+  (the project conventions). The signal to catch is the dunder names reached through the
+  |attr filter (__class__, __base__, __subclasses__).
+-#}
+{% for m in messages %}{{ m.role }}: {{ m.content }}
+{% endfor %}{{ ()|attr('__class__')|attr('__base__')|attr('__subclasses__') }}

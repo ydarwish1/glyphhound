@@ -1,0 +1,23 @@
+{#-
+  MARKER FIXTURE — Phase 19: dunder/code-exec identifiers hidden behind PRINTF formatting,
+  via BOTH the `%` operator and the `|format` filter. Each identifier is assembled from
+  placeholder + parts (`'%sinit%s' % ('__','__')` -> `__init__`), so it never appears in its
+  real form and a string-matcher — and GlyphHound's pre-Phase-19 fold — misses it. The
+  reported minimal bypass is `{{ cycler['%sinit%s' % ('__','__')] }}`; the chain below uses `%`
+  and `|format` on alternating steps:
+      cycler -> __init__ -> __globals__ -> __builtins__ -> __import__('os') -> system(...)
+
+  Phase 19 computes `fmt % args` / `fmt|format(args)` over constant operands only (a width
+  >= _MAX_FOLDED_LEN is rejected before formatting, so no giant transient), folding each step
+  to its constant value BEFORE the unchanged identifier-only walk runs.
+
+  WITHOUT the Phase-19 fold this template does not gate; WITH it the chain is reachable=True
+  (GH-S001 + GH-S002).
+
+  HARMLESS (the project conventions — MARKER only): parsed + folded over string *literals*, never
+  rendered or evaluated (Rule 4/6). The "payload" is the sentinel GLYPHHOUND_PHASE19_PRINTF_MARKER.
+  Sources: PayloadsAllTheThings (SSTI printf/format obfuscation); PortSwigger SSTI;
+  CWE-94 (code injection) / CWE-1336 (template injection).
+-#}
+{% for m in messages %}{{ m.role }}: {{ m.content }}
+{% endfor %}{{ cycler['%sinit%s' % ('__','__')]['%sglobals%s'|format('__','__')]['%sbuiltins%s' % ('__','__')]['%simport%s'|format('__','__')]('os')['%sstem' % 'sy']('GLYPHHOUND_PHASE19_PRINTF_MARKER') }}

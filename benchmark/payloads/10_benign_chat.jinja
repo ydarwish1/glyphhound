@@ -1,0 +1,3 @@
+{#- BENIGN Phase-8 benchmark control: ordinary chat template, no sink. See ../README.md. -#}
+{% for m in messages %}{{ m.role }}: {{ m.content }}
+{% endfor %}{{ '<|assistant|>' }}

@@ -1,0 +1,171 @@
+{
+  "_comment": [
+    "Phase-8 head-to-head benchmark payload set (GlyphHound vs Promptfoo ModelAudit).",
+    "Each entry: a committed MARKER-only .jinja payload wrapped at run time into a minimal GGUF",
+    "(tests/synthetic.build_gguf) so BOTH tools scan the SAME artifact. The benchmark targets",
+    "ModelAudit's STRONGEST configuration (jinja2 + gguf installed -> its optional dynamic",
+    "SandboxedEnvironment render test is active) so the incumbent is never under-powered",
+    "(the project conventions). Every payload here has a DETERMINISTIC verdict for both tools (Rule 7).",
+    "NOTE (measured): a top-level concat chain is caught by ModelAudit ONLY via that dynamic",
+    "render, whose multiprocessing worker is timing-dependent -> its verdict flips between runs",
+    "(FLAG vs miss). Such render-only payloads are deliberately EXCLUDED from this asserted set",
+    "and the non-determinism is documented in ../README.md; the edge payloads below miss",
+    "deterministically (render skips the gated path; regex/static-AST probe are concat-blind).",
+    "'caught' for a benign control would be a false positive, so benign rows expect false/false."
+  ],
+  "marker": "GLYPHHOUND_BENCH_MARKER",
+  "modelaudit_version": "0.2.47",
+  "modelaudit_env": {
+    "modelaudit": "0.2.47",
+    "jinja2": "3.1.6",
+    "gguf": "0.19.0",
+    "note": "jinja2 enables ModelAudit's optional dynamic sandbox-render test (its strongest config). A plain 'pip install modelaudit' omits jinja2/gguf and is regex-only -- even weaker, so this benchmark is conservative."
+  },
+  "modelaudit_catch_rule": "a jinja2_template_check issue carrying a details.pattern_type (regex SSTI match OR a sandbox_violation from the dynamic render)",
+  "glyphhound_catch_rule": "the scan report gates CI: >=1 reachable finding at severity >= high (make_report(...).exit_code != 0)",
+  "payloads": [
+    {
+      "file": "01_plain_chain.jinja",
+      "label": "plain dunder chain (CONTROL, un-obfuscated)",
+      "malicious": true,
+      "obfuscation": "none",
+      "technique": "literal self.__init__...__import__('os').system(MARKER) at top level",
+      "source": "CVE-2024-34359 (GHSA-56xg-wfcc-g829)",
+      "gh_expected": true,
+      "modelaudit_expected": true,
+      "modelaudit_mechanism": "regex (literal tokens)"
+    },
+    {
+      "file": "02_attr_filter_concat.jinja",
+      "label": "|attr() filter pivot, concat dunders",
+      "malicious": true,
+      "obfuscation": "|attr() filter + string-concat (~)",
+      "technique": "()|attr('__cl'~'ass__')|attr('__ba'~'se__')|attr('__subcl'~'asses__')",
+      "source": "Jinja2 SSTI |attr pivot, obfuscated",
+      "gh_expected": true,
+      "modelaudit_expected": true,
+      "modelaudit_mechanism": "regex (literal |attr( token survives the obfuscation)"
+    },
+    {
+      "file": "03_getattr_concat.jinja",
+      "label": "getattr() reflection, concat dunder",
+      "malicious": true,
+      "obfuscation": "getattr() reflection over computed (concat) constant",
+      "technique": "getattr(cycler,'__in'+'it__')...('os')['sys'+'tem'](MARKER)",
+      "source": "CVE-2024-34359 gadget via reflection, obfuscated",
+      "gh_expected": true,
+      "modelaudit_expected": true,
+      "modelaudit_mechanism": "regex (literal getattr( token survives the obfuscation)"
+    },
+    {
+      "file": "04_concat_gated_loop.jinja",
+      "label": "concat chain gated inside the message loop",
+      "malicious": true,
+      "obfuscation": "string-concat (+), placed off the empty-context render path",
+      "technique": "chain inside {% for m in messages %} -- never executed when messages=[]",
+      "source": "CVE-2024-34359 gadget, obfuscated + control-flow-gated",
+      "gh_expected": true,
+      "modelaudit_expected": false,
+      "modelaudit_mechanism": "MISS: regex misses concat; render skips (loop body not run); static AST probe is Const-only"
+    },
+    {
+      "file": "05_concat_gated_role.jinja",
+      "label": "concat chain gated behind a role check",
+      "malicious": true,
+      "obfuscation": "string-concat (+), gated behind m.role=='system'",
+      "technique": "chain fires only for a system-role message -- not during an empty render",
+      "source": "CVE-2024-34359 gadget, obfuscated + control-flow-gated",
+      "gh_expected": true,
+      "modelaudit_expected": false,
+      "modelaudit_mechanism": "MISS: regex misses concat; render skips (no messages); static AST probe is Const-only"
+    },
+    {
+      "file": "06_tilde_gated_if.jinja",
+      "label": "tilde-concat chain gated behind 'if messages'",
+      "malicious": true,
+      "obfuscation": "string-concat (~), gated behind a message-presence check",
+      "technique": "chain inside {% if messages %} -- skipped when messages is empty/falsy",
+      "source": "CVE-2024-34359 gadget, obfuscated + control-flow-gated",
+      "gh_expected": true,
+      "modelaudit_expected": false,
+      "modelaudit_mechanism": "MISS: regex misses ~concat; render skips (if false); static AST probe is Const-only"
+    },
+    {
+      "file": "20_format_split_gated.jinja",
+      "label": "str.format()-built dunders, gated in the loop",
+      "malicious": true,
+      "obfuscation": "str.format() over split constant pieces, gated off the render path",
+      "technique": "cycler['{}{}'.format('__in','it__')]...('os')['{}{}'.format('sys','tem')](MARKER) inside the loop",
+      "source": "CVE-2024-34359 gadget, Phase-10 str.format obfuscation + control-flow-gated",
+      "gh_expected": true,
+      "modelaudit_expected": true,
+      "modelaudit_mechanism": "CATCH (measured, honest): ModelAudit's regex flags the .format() construction via its generic 'obfuscation' pattern_type -- it has such a heuristic for str.format but none for slice/|join/|replace. GlyphHound resolves the actual sink; ModelAudit only flags 'looks obfuscated'."
+    },
+    {
+      "file": "21_slice_concat_gated.jinja",
+      "label": "slice-built dunders, gated in the loop",
+      "malicious": true,
+      "obfuscation": "constant concat sliced to length, gated off the render path",
+      "technique": "cycler[('__in'+'it__#')[:8]]...('os')[('sys'+'tem#')[:6]](MARKER) inside the loop",
+      "source": "CVE-2024-34359 gadget, Phase-10 slice obfuscation + control-flow-gated",
+      "gh_expected": true,
+      "modelaudit_expected": false,
+      "modelaudit_mechanism": "MISS: no whole token survives the split+slice; render skips the loop body; static AST probe is Const-only"
+    },
+    {
+      "file": "22_join_split_gated.jinja",
+      "label": "|join-built dunders, gated in the loop",
+      "malicious": true,
+      "obfuscation": "|join filter over a split constant list, gated off the render path",
+      "technique": "cycler[['__in','it__']|join]...('os')[['sys','tem']|join](MARKER) inside the loop",
+      "source": "CVE-2024-34359 gadget, Phase-10 |join obfuscation + control-flow-gated",
+      "gh_expected": true,
+      "modelaudit_expected": false,
+      "modelaudit_mechanism": "MISS: regex is join-blind and no whole token survives; render skips the loop body; static AST probe is Const-only"
+    },
+    {
+      "file": "23_replace_placeholder_gated.jinja",
+      "label": "|replace-built dunders, gated in the loop",
+      "malicious": true,
+      "obfuscation": "|replace filter restoring placeholder chars, gated off the render path",
+      "technique": "cycler['__QQQQ__'|replace('QQQQ','init')]...('os')['sQQtem'|replace('QQ','ys')](MARKER) inside the loop",
+      "source": "CVE-2024-34359 gadget, Phase-10 |replace obfuscation + control-flow-gated",
+      "gh_expected": true,
+      "modelaudit_expected": false,
+      "modelaudit_mechanism": "MISS: regex is replace-blind and no whole token survives; render skips the loop body; static AST probe is Const-only"
+    },
+    {
+      "file": "10_benign_chat.jinja",
+      "label": "benign chat template (CONTROL)",
+      "malicious": false,
+      "obfuscation": "none",
+      "technique": "ordinary message-formatting loop; no sink",
+      "source": "benign control",
+      "gh_expected": false,
+      "modelaudit_expected": false,
+      "modelaudit_mechanism": "clean"
+    },
+    {
+      "file": "11_benign_concat.jinja",
+      "label": "benign string concat (CONTROL)",
+      "malicious": false,
+      "obfuscation": "string-concat 'rol'+'e' folding to the benign identifier 'role'",
+      "technique": "{% set role_key = 'rol'+'e' %}{{ m[role_key] }} -- fold must NOT false-positive",
+      "source": "benign control",
+      "gh_expected": false,
+      "modelaudit_expected": false,
+      "modelaudit_mechanism": "clean"
+    },
+    {
+      "file": "12_benign_gated.jinja",
+      "label": "benign gated template (CONTROL)",
+      "malicious": false,
+      "obfuscation": "none (a message-presence guard, no sink)",
+      "technique": "{% if messages %}{{ messages[0].content }}{% endif %} -- gating alone is not flagged",
+      "source": "benign control",
+      "gh_expected": false,
+      "modelaudit_expected": false,
+      "modelaudit_mechanism": "clean"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{#-
+  MARKER FIXTURE — Phase 12 Catalog++: the NAMESPACE / SCOPE-INTROSPECTION builtins family.
+  globals() / locals() / vars() hand back a live namespace dict from which __builtins__ and any
+  imported module (os, subprocess, ...) can be pulled — a direct route to code execution that a
+  message-formatting template never needs. The Phase-2..11 catalog did not list them, so these
+  calls are MISSED; Phase 12 adds them to the code-exec names (GH-S002, CWE-94). Calling a bare
+  code-exec name is reachable by Phase-3 taint, so each call gates.
+
+  HARMLESS (the project conventions — MARKER only): parsed + walked, never rendered; the calls are
+  never executed. The SIGNAL is the introspection-builtin names, not the harmless 'config' arg.
+  Sources: PayloadsAllTheThings / PortSwigger SSTI (globals()/builtins reach); CWE-94 / CWE-1336.
+-#}
+{% for m in messages %}{{ m.role }}: {{ m.content }}
+{% endfor %}{{ globals() }}{{ locals() }}{{ vars(config) }}

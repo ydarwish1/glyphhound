@@ -1,0 +1,327 @@
+{#- Converted from official DeepSeek-V3.2 by Unsloth -#}
+{%- if not thinking_mode is defined -%}
+    {%- set thinking_mode = "thinking" -%}
+{%- endif -%}
+{%- if thinking_mode not in ["chat", "thinking"] -%}
+    {{ raise_exception("Invalid thinking_mode: " ~ thinking_mode) }}
+{%- endif -%}
+{%- if not add_generation_prompt is defined -%}
+    {%- set add_generation_prompt = true -%}
+{%- endif -%}
+{%- set global_tools = tools if tools is defined and tools else none -%}
+
+{%- set dsml_token = "｜DSML｜" -%}
+{%- set thinking_start_token = "<think>" -%}
+{%- set thinking_end_token = "</think>" -%}
+{%- set user_tag = "<｜User｜>" -%}
+{%- set assistant_tag = "<｜Assistant｜>" -%}
+
+{%- macro emit_param_line(key, value, is_string, first) -%}
+{%- if not first -%}
+{{ "\n" }}
+{%- endif -%}<{{ dsml_token }}parameter name="{{ key }}" string="{{ "true" if is_string else "false" }}">{{ value }}</{{ dsml_token }}parameter>
+{%- endmacro -%}
+
+{%- macro json_unescape(value) -%}
+{%- set ns = namespace(out="", escape=false) -%}
+{%- for ch in value -%}
+    {%- if ns.escape -%}
+        {%- if ch == '"' -%}
+            {%- set ns.out = ns.out + '"' -%}
+        {%- elif ch == "\\" -%}
+            {%- set ns.out = ns.out + "\\" -%}
+        {%- elif ch == 'n' -%}
+            {%- set ns.out = ns.out + '\n' -%}
+        {%- elif ch == 't' -%}
+            {%- set ns.out = ns.out + '\t' -%}
+        {%- elif ch == 'r' -%}
+            {%- set ns.out = ns.out + '\r' -%}
+        {%- elif ch == 'b' -%}
+            {%- set ns.out = ns.out + '\b' -%}
+        {%- elif ch == 'f' -%}
+            {%- set ns.out = ns.out + '\f' -%}
+        {%- elif ch == '/' -%}
+            {%- set ns.out = ns.out + '/' -%}
+        {%- else -%}
+            {%- set ns.out = ns.out + ch -%}
+        {%- endif -%}
+        {%- set ns.escape = false -%}
+    {%- elif ch == "\\" -%}
+        {%- set ns.escape = true -%}
+    {%- else -%}
+        {%- set ns.out = ns.out + ch -%}
+    {%- endif -%}
+{%- endfor -%}
+{{ ns.out }}
+{%- endmacro -%}
+
+{%- macro render_dsml_params(args) -%}
+    {%- if args is mapping -%}
+        {%- set ns = namespace(first=true) -%}
+        {%- for k, v in args.items() -%}
+            {%- if v is string -%}
+                {{ emit_param_line(k, v, true, ns.first) }}
+            {%- else -%}
+                {{ emit_param_line(k, v | tojson, false, ns.first) }}
+            {%- endif -%}
+            {%- set ns.first = false -%}
+        {%- endfor -%}
+    {%- elif args is string -%}
+        {%- set s = args | trim -%}
+        {%- if s and s[0] == '{' and s[-1] == '}' -%}
+            {%- set s = s[1:-1] -%}
+        {%- endif -%}
+        {%- set ns = namespace(in_string=false, escape=false, depth=0, buf="", key="", reading_key=true, first=true) -%}
+        {%- for ch in s -%}
+            {%- if ns.in_string -%}
+                {%- if ns.escape -%}
+                    {%- set ns.buf = ns.buf + ch -%}
+                    {%- set ns.escape = false -%}
+                {%- elif ch == "\\" -%}
+                    {%- set ns.buf = ns.buf + ch -%}
+                    {%- set ns.escape = true -%}
+                {%- elif ch == '"' -%}
+                    {%- set ns.in_string = false -%}
+                    {%- set ns.buf = ns.buf + ch -%}
+                {%- else -%}
+                    {%- set ns.buf = ns.buf + ch -%}
+                {%- endif -%}
+            {%- else -%}
+                {%- if ch == '"' -%}
+                    {%- set ns.in_string = true -%}
+                    {%- set ns.buf = ns.buf + ch -%}
+                {%- elif ch == '{' or ch == '[' -%}
+                    {%- set ns.depth = ns.depth + 1 -%}
+                    {%- set ns.buf = ns.buf + ch -%}
+                {%- elif ch == '}' or ch == ']' -%}
+                    {%- set ns.depth = ns.depth - 1 -%}
+                    {%- set ns.buf = ns.buf + ch -%}
+                {%- elif ch == ':' and ns.reading_key and ns.depth == 0 -%}
+                    {%- set ns.key = ns.buf | trim -%}
+                    {%- set ns.buf = "" -%}
+                    {%- set ns.reading_key = false -%}
+                {%- elif ch == ',' and (not ns.reading_key) and ns.depth == 0 -%}
+                    {%- set raw_val = ns.buf | trim -%}
+                    {%- set ns.buf = "" -%}
+                    {%- set ns.reading_key = true -%}
+                    {%- set raw_key = ns.key | trim -%}
+                    {%- if raw_key and raw_key[0] == '"' and raw_key[-1] == '"' -%}
+                        {%- set key = raw_key[1:-1] -%}
+                    {%- else -%}
+                        {%- set key = raw_key -%}
+                    {%- endif -%}
+                    {%- if raw_val and raw_val[0] == '"' and raw_val[-1] == '"' -%}
+                        {%- set val = json_unescape(raw_val[1:-1]) -%}
+                        {%- set is_str = true -%}
+                    {%- else -%}
+                        {%- set val = raw_val -%}
+                        {%- set is_str = false -%}
+                    {%- endif -%}
+                    {{ emit_param_line(key, val, is_str, ns.first) }}
+                    {%- set ns.first = false -%}
+                {%- else -%}
+                    {%- set ns.buf = ns.buf + ch -%}
+                {%- endif -%}
+            {%- endif -%}
+        {%- endfor -%}
+        {%- if not ns.reading_key -%}
+            {%- set raw_val = ns.buf | trim -%}
+            {%- set raw_key = ns.key | trim -%}
+            {%- if raw_key and raw_key[0] == '"' and raw_key[-1] == '"' -%}
+                {%- set key = raw_key[1:-1] -%}
+            {%- else -%}
+                {%- set key = raw_key -%}
+            {%- endif -%}
+            {%- if raw_val and raw_val[0] == '"' and raw_val[-1] == '"' -%}
+                {%- set val = json_unescape(raw_val[1:-1]) -%}
+                {%- set is_str = true -%}
+            {%- else -%}
+                {%- set val = raw_val -%}
+                {%- set is_str = false -%}
+            {%- endif -%}
+            {{ emit_param_line(key, val, is_str, ns.first) }}
+        {%- endif -%}
+    {%- endif -%}
+{%- endmacro -%}
+
+{%- macro render_tool_calls(tool_calls) -%}
+{%- set ns = namespace(first=true) -%}
+{{ "\n\n" }}<{{ dsml_token }}function_calls>{{ "\n" }}
+{%- for tool_call in tool_calls -%}
+    {%- set fn = tool_call["function"] if tool_call["function"] is defined else tool_call -%}
+    {%- set name = fn["name"] -%}
+    {%- set args = fn["arguments"] -%}
+    {%- set params = render_dsml_params(args) -%}
+    {%- if not ns.first -%}{{ "\n" }}{%- endif -%}
+<{{ dsml_token }}invoke name="{{ name }}">
+{{ params }}
+</{{ dsml_token }}invoke>
+    {%- set ns.first = false -%}
+{%- endfor -%}
+{{ "\n" }}</{{ dsml_token }}function_calls>
+{%- endmacro -%}
+
+{%- macro render_tools(tools) -%}
+{%- set ns = namespace(tool_jsons=[]) -%}
+{%- for tool in tools -%}
+    {%- if tool["function"] is defined -%}
+        {%- set ns.tool_jsons = ns.tool_jsons + [tool["function"] | tojson] -%}
+    {%- else -%}
+        {%- set ns.tool_jsons = ns.tool_jsons + [tool | tojson] -%}
+    {%- endif -%}
+{%- endfor -%}
+{%- set tool_schemas = ns.tool_jsons | join("\n") -%}
+## Tools
+
+You have access to a set of tools you can use to answer the user's question.
+You can invoke functions by writing a "<{{ dsml_token }}function_calls>" block like the following as part of your reply to the user:
+<{{ dsml_token }}function_calls>
+<{{ dsml_token }}invoke name="$FUNCTION_NAME">
+<{{ dsml_token }}parameter name="$PARAMETER_NAME" string="true|false">$PARAMETER_VALUE</{{ dsml_token }}parameter>
+...
+</{{ dsml_token }}invoke>
+<{{ dsml_token }}invoke name="$FUNCTION_NAME2">
+...
+</{{ dsml_token }}invoke>
+</{{ dsml_token }}function_calls>
+
+String and scalar parameters should be specified as is without any escaping or quotes, while lists and objects should use JSON format. The "string" attribute should be set to "true" for string type parameters and "false" for other types (numbers, booleans, arrays, objects).
+
+If the thinking_mode is enabled, then after function results you should strongly consider outputting a thinking block. Here is an example:
+
+<{{ dsml_token }}function_calls>
+...
+</{{ dsml_token }}function_calls>
+
+<function_results>
+...
+</function_results>
+
+{{ thinking_start_token }}...thinking about results{{ thinking_end_token }}
+
+Here are the functions available in JSONSchema format:
+<functions>
+{{ tool_schemas }}
+</functions>{{ "\n" }}{%- endmacro -%}
+
+{%- macro render_response_format(schema) -%}
+## Response Format:
+
+You MUST strictly adhere to the following schema to reply:
+{{ schema }}{%- endmacro -%}
+
+{%- set ns = namespace(last_user_idx=-1, tool_expected=0, tool_seen=0, tool_rendered=false, has_system=false) -%}
+{%- for message in messages -%}
+    {%- if message["role"] in ["user", "developer"] -%}
+        {%- set ns.last_user_idx = loop.index0 -%}
+    {%- endif -%}
+    {%- if message["role"] == "system" -%}
+        {%- set ns.has_system = true -%}
+    {%- endif -%}
+{%- endfor -%}
+
+{{ bos_token }}
+{%- if global_tools and not ns.has_system -%}
+{{ "\n\n" + render_tools(global_tools) }}
+{%- set ns.tool_rendered = true -%}
+{%- endif -%}
+
+{%- for message in messages -%}
+    {%- set role = message["role"] -%}
+    {%- if role == "system" -%}
+        {%- set content = message["content"] if message["content"] is defined and message["content"] is not none else "" -%}
+        {%- set content = content | string -%}
+        {{ content }}
+        {%- if message["tools"] is defined and message["tools"] -%}
+            {{ "\n\n" + render_tools(message["tools"]) }}
+            {%- set ns.tool_rendered = true -%}
+        {%- elif global_tools and not ns.tool_rendered -%}
+            {{ "\n\n" + render_tools(global_tools) }}
+            {%- set ns.tool_rendered = true -%}
+        {%- endif -%}
+        {%- if message["response_format"] is defined and message["response_format"] -%}
+            {{ "\n\n" + render_response_format(message["response_format"] | tojson) }}
+        {%- endif -%}
+    {%- elif role == "developer" -%}
+        {%- set content = message["content"] if message["content"] is defined and message["content"] is not none else "" -%}
+        {%- set content = content | string -%}
+        {%- set content_developer = "" -%}
+        {%- if message["tools"] is defined and message["tools"] -%}
+            {%- set content_developer = content_developer + "\n\n" + render_tools(message["tools"]) -%}
+            {%- set ns.tool_rendered = true -%}
+        {%- elif global_tools and not ns.tool_rendered -%}
+            {%- set content_developer = content_developer + "\n\n" + render_tools(global_tools) -%}
+            {%- set ns.tool_rendered = true -%}
+        {%- endif -%}
+        {%- if message["response_format"] is defined and message["response_format"] -%}
+            {%- set content_developer = content_developer + "\n\n" + render_response_format(message["response_format"] | tojson) -%}
+        {%- endif -%}
+        {%- set content_developer = content_developer + "\n\n# The user's message is: " + content -%}
+        {%- set suppress_prompt = loop.last and loop.index0 == ns.last_user_idx and not add_generation_prompt -%}
+        {{ user_tag + content_developer }}
+        {%- if not suppress_prompt -%}
+            {{ assistant_tag }}
+            {%- if loop.index0 == ns.last_user_idx and thinking_mode == "thinking" -%}
+                {{ thinking_start_token }}
+            {%- else -%}
+                {{ thinking_end_token }}
+            {%- endif -%}
+        {%- endif -%}
+    {%- elif role == "user" -%}
+        {%- set content = message["content"] if message["content"] is defined and message["content"] is not none else "" -%}
+        {%- set content = content | string -%}
+        {%- set suppress_prompt = loop.last and loop.index0 == ns.last_user_idx and not add_generation_prompt -%}
+        {{ user_tag + content }}
+        {%- if not suppress_prompt -%}
+            {{ assistant_tag }}
+            {%- if loop.index0 == ns.last_user_idx and thinking_mode == "thinking" -%}
+                {{ thinking_start_token }}
+            {%- else -%}
+                {{ thinking_end_token }}
+            {%- endif -%}
+        {%- endif -%}
+    {%- elif role == "tool" -%}
+        {%- set content = message["content"] if message["content"] is defined and message["content"] is not none else "" -%}
+        {%- set content = content | string -%}
+        {%- if ns.tool_seen == 0 -%}
+            {{ "\n\n<function_results>" }}
+        {%- endif -%}
+        {{ "\n<result>" + content + "</result>" }}
+        {%- set ns.tool_seen = ns.tool_seen + 1 -%}
+        {%- if ns.tool_seen == ns.tool_expected -%}
+            {{ "\n</function_results>" }}
+            {%- if not (loop.last and not add_generation_prompt) -%}
+                {%- if loop.index0 >= ns.last_user_idx and thinking_mode == "thinking" -%}
+                    {{ "\n\n" + thinking_start_token }}
+                {%- else -%}
+                    {{ "\n\n" + thinking_end_token }}
+                {%- endif -%}
+            {%- endif -%}
+            {%- set ns.tool_expected = 0 -%}
+            {%- set ns.tool_seen = 0 -%}
+        {%- endif -%}
+    {%- elif role == "assistant" -%}
+        {%- set content = message["content"] if message["content"] is defined and message["content"] is not none else "" -%}
+        {%- set content = content | string -%}
+        {%- set tool_calls = message["tool_calls"] if message["tool_calls"] is defined and message["tool_calls"] is not none else none -%}
+        {%- set tool_calls_content = "" -%}
+        {%- if tool_calls -%}
+            {%- set tool_calls_content = render_tool_calls(tool_calls) -%}
+            {%- set ns.tool_expected = tool_calls | length -%}
+            {%- set ns.tool_seen = 0 -%}
+        {%- else -%}
+            {%- set ns.tool_expected = 0 -%}
+            {%- set ns.tool_seen = 0 -%}
+        {%- endif -%}
+        {%- set reasoning = "" -%}
+        {%- if thinking_mode == "thinking" and loop.index0 > ns.last_user_idx -%}
+            {%- set reasoning_content = message["reasoning_content"] if message["reasoning_content"] is defined and message["reasoning_content"] is not none else "" -%}
+            {%- set reasoning_content = reasoning_content | string -%}
+            {%- set reasoning = reasoning_content + thinking_end_token -%}
+        {%- endif -%}
+        {{ reasoning + content + tool_calls_content + eos_token }}
+    {%- else -%}
+        {{ raise_exception("Unknown role: " ~ role) }}
+    {%- endif -%}
+{%- endfor -%}
+{#- Copyright 2025-present Unsloth. Apache 2.0 License. #}

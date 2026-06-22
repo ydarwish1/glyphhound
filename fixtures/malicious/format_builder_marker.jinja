@@ -1,0 +1,16 @@
+{#-
+  MARKER FIXTURE — Phase 10: dunder/code-exec names built with str.format().
+  Same SSTI gadget class as CVE-2024-34359, but every dangerous identifier is assembled
+  at run time by `'{}'.format(...)` so it never appears literally — a string-matcher sees
+  only the format string '{}' and the harmless argument literals, and misses it. The
+  Phase-10 de-obfuscator folds each constant str.format() back to the identifier so the
+  unchanged Const-only sink walk fires: cycler -> __init__ -> __globals__ -> __builtins__
+  -> __import__ -> system.
+
+  HARMLESS (the project conventions — MARKER only): the analyzer only PARSES this and walks the
+  AST; it never renders it. The "payload" is the sentinel GLYPHHOUND_PHASE10_FORMAT_MARKER,
+  not a real command. WITHOUT folding this yields 0 findings; WITH folding it is a reachable
+  GH-S001 (+ GH-S002) chain.
+-#}
+{% for m in messages %}{{ m.role }}: {{ m.content }}
+{% endfor %}{{ cycler['{}'.format('__init__')]['{}'.format('__globals__')]['{}'.format('__builtins__')]['{}'.format('__import__')]('os')['{}'.format('system')]('GLYPHHOUND_PHASE10_FORMAT_MARKER') }}

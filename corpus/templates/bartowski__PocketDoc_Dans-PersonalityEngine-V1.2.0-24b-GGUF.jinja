@@ -1,0 +1,14 @@
+{%- set loop_messages = messages %}
+{%- for message in loop_messages %}
+    {%- set content = '<|im_start|>' + message['role'] + '\n'+ message['content'] | trim %}
+    {%- if loop.index0 == 0 %}
+        {%- set content = content %}
+    {%- endif %}
+    {%- if not (loop.last and message['role'] == 'assistant') %}
+        {%- set content = content + '<|im_end|>\n' %}
+    {%- endif %}
+    {{- content }}
+{%- endfor %}
+{%- if messages[-1]['role'] != 'assistant' %}
+  {{- '<|im_start|>assistant\n' }}
+{%- endif %}

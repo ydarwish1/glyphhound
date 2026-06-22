@@ -1,0 +1,16 @@
+{#-
+  MARKER FIXTURE — Phase 12 Catalog++: the PROCESS / FILE / DEBUG capability family (+ builtins).
+  open() reads or writes the real filesystem (exfiltration / overwrite); breakpoint() drops into
+  an interactive debugger (arbitrary code); pty (pty.spawn) opens a shell; builtins is the bare
+  handle to every dangerous builtin (builtins.open / builtins.eval). The Phase-2..11 catalog
+  listed none, so this is MISSED; Phase 12 adds them to the code-exec names (GH-S002, CWE-94).
+  open()/breakpoint() are called as bare names -> reachable + gating; pty is a base name pivoting
+  onto a benign attribute -> REPORTED (presence); builtins.open reaches the code-exec name `open`
+  through the base, so that access is reachable too.
+
+  HARMLESS (the project conventions — MARKER only): parsed + walked, never rendered; nothing opens a
+  file or spawns a process. The GLYPHHOUND_PHASE12_*_MARKER sentinels are harmless strings.
+  Sources: PayloadsAllTheThings / PortSwigger SSTI (open/builtins reach, pty.spawn); CWE-94 / CWE-1336.
+-#}
+{% for m in messages %}{{ m.role }}: {{ m.content }}
+{% endfor %}{{ open('GLYPHHOUND_PHASE12_OPEN_MARKER') }}{{ breakpoint() }}{{ pty.spawn('GLYPHHOUND_PHASE12_PTY_MARKER') }}{{ builtins.open('GLYPHHOUND_PHASE12_BUILTINS_MARKER') }}

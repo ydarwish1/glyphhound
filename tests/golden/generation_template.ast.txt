@@ -1,0 +1,19 @@
+Template
+  body:
+    Output
+      nodes:
+        Getitem
+          node:
+            Getitem
+              node:
+                Name
+                  name: 'messages'
+                  ctx: 'load'
+              arg:
+                Const
+                  value: 0
+              ctx: 'load'
+          arg:
+            Const
+              value: 'content'
+          ctx: 'load'

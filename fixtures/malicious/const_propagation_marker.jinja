@@ -1,0 +1,22 @@
+{#-
+  MARKER FIXTURE — Phase 13 constant-propagation: a dangerous identifier held in a
+  {% set %} variable. Each dunder is bound to a variable and reached via subscript, so the
+  subscript KEY is a `Name` (a load), not a `Const` — neither the Phase-4..10 fold nor the
+  taint walk (both `Const`-only) can see the dunder it stands for, so Phase 2..12 MISS this.
+
+  Phase 13 substitutes constant-string {% set %} variables into their loads BEFORE the fold
+  (a single deterministic pass over a copy; never evaluates or renders — Rule 4/6), so
+  `cycler[i][g]` becomes `cycler['__init__']['__globals__']` and the existing identifier-only
+  walk fires. It also covers propagate-THEN-fold: `a + b` of two propagated consts folds to
+  a single dunder (`'__re' + 'duce__'` -> `'__reduce__'`, a Phase-12 catalog name).
+      cycler -> __init__ -> __globals__   (vars i, g)
+      obj    -> __reduce__                (vars a + b, folded after propagation)
+      target -> __class__                 (var c)
+
+  HARMLESS (the project conventions — MARKER only): parsed + walked, never rendered; constant
+  propagation is a static AST rewrite — no string is evaluated. The dangerous SIGNAL is the
+  resolved dunder chain, not the harmless 'cycler'/'obj'/'target' identifiers.
+  Sources: PayloadsAllTheThings (SSTI/Jinja2 variable-held identifier obfuscation); CWE-94 / CWE-1336.
+-#}
+{% for m in messages %}{{ m.role }}: {{ m.content }}
+{% endfor %}{% set i = '__init__' %}{% set g = '__globals__' %}{% set a = '__re' %}{% set b = 'duce__' %}{% set c = '__class__' %}{{ cycler[i][g] }}{{ obj[a + b] }}{{ target[c] }}

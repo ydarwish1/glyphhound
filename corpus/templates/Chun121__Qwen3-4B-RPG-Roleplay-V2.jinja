@@ -1,0 +1,1 @@
+{% for message in messages %}{% if message['role'] == 'system' %}{{ message['content'] + eos_token }}{% elif message['role'] == 'user' %}{{ message['content'] }}{% elif message['role'] == 'assistant' %}{{ message['content'] + eos_token }}{% endif %}{% endfor %}{% if add_generation_prompt %}<thinking>{% endif %}

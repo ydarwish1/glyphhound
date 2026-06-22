@@ -1,0 +1,67 @@
+Template
+  body:
+    For
+      target:
+        Name
+          name: 'm'
+          ctx: 'store'
+      iter:
+        Name
+          name: 'messages'
+          ctx: 'load'
+      body:
+        Output
+          nodes:
+            Getattr
+              node:
+                Name
+                  name: 'm'
+                  ctx: 'load'
+              attr: 'role'
+              ctx: 'load'
+            TemplateData
+              data: ': '
+            Getattr
+              node:
+                Name
+                  name: 'm'
+                  ctx: 'load'
+              attr: 'content'
+              ctx: 'load'
+            TemplateData
+              data: '\n'
+      else_: []
+      test: None
+      recursive: False
+    Output
+      nodes:
+        Call
+          node:
+            Name
+              name: 'getattr'
+              ctx: 'load'
+          args:
+            Name
+              name: 'x'
+              ctx: 'load'
+            Add
+              left:
+                Const
+                  value: '__cl'
+              right:
+                Const
+                  value: 'ass__'
+          kwargs: []
+          dyn_args: None
+          dyn_kwargs: None
+        Filter
+          node:
+            Const
+              value: ''
+          name: 'attr'
+          args:
+            Const
+              value: '__class__'
+          kwargs: []
+          dyn_args: None
+          dyn_kwargs: None

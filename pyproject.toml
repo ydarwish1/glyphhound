@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "glyphhound"
+version = "0.0.0"
+description = "Deterministic scanner for code-executing chat templates inside model files (GGUF / Ollama / Hugging Face)."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Yusif Darwish" }]
+# Stage 1 (Acquirer) uses only the Python standard library, by design:
+# fewer pinned deps -> easier determinism (the project conventions).
+# Stage 2 (Parser, Phase 1) adds Jinja2, pinned exactly so the AST API can't drift
+# under us (the design docs Risks: "Jinja2 AST API drift"). MarkupSafe is Jinja2's only dep.
+dependencies = ["jinja2==3.1.6"]
+
+# jsonschema is a DEV-ONLY dependency: it validates the Stage-5 SARIF output against
+# the vendored official SARIF 2.1.0 schema in the offline test/verify layer (Phase 5).
+# The shipped reporter emits SARIF with the stdlib `json` only and never imports
+# jsonschema, so the runtime dependency set stays jinja2-only (the project conventions).
+[project.optional-dependencies]
+dev = ["pytest==9.1.1", "jsonschema==4.26.0"]
+
+# The console entry point: `glyphhound scan <ref>` (same as `python -m glyphhound scan`).
+# main() returns the CI exit code (0 clean / 1 a reachable finding gates / 2 scan error),
+# which setuptools' generated wrapper passes to sys.exit().
+[project.scripts]
+glyphhound = "glyphhound.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

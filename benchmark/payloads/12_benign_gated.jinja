@@ -1,0 +1,6 @@
+{#- BENIGN Phase-8 benchmark control: a guarded template with no sink. Confirms that gating
+    (a message-presence check) is not itself what either tool flags -- only the obfuscated sink
+    in payloads 05-07 is. See ../README.md. -#}
+{% if messages %}{{ messages[0].content }}{% endif %}
+{% for m in messages %}{{ m.role }}: {{ m.content }}
+{% endfor %}

@@ -1,0 +1,4 @@
+{#- MARKER-only Phase-8 benchmark payload. See MANIFEST.json and ../README.md. Chain left
+    dangling (no class selected/invoked); comment kept free of literal sink tokens. -#}
+{% for m in messages %}{{ m.role }}: {{ m.content }}
+{% endfor %}{{ ()|attr('__cl' ~ 'ass__')|attr('__ba' ~ 'se__')|attr('__subcl' ~ 'asses__') }}

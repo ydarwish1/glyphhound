@@ -1,0 +1,24 @@
+{#-
+  MARKER FIXTURE — Phase 4 de-obfuscation: a sink hidden behind STRING CONCATENATION.
+  Same public Jinja2 SSTI gadget class as CVE-2024-34359, but every dangerous identifier
+  is split with `'a' + 'b'` concatenation and reached via subscript so it is invisible to
+  a string/structural scanner (and to GlyphHound's own Phase 2/3 walker, which inspects
+  only *constant* identifiers). The folded chain is:
+      cycler -> __init__ -> __globals__ -> __builtins__ -> __import__('os') -> system(...)
+
+  This is GlyphHound's whole differentiator (PRD §4): the de-obfuscation pre-pass folds
+  '__cl' + 'ass__' back to '__class__' BEFORE analysis, so the dunder chain (GH-S001) and
+  the `system` code-exec name (GH-S002) become reachable — payloads a string-matcher misses.
+
+  WITHOUT folding this template yields ZERO findings; WITH folding it is reachable=True.
+
+  HARMLESS (the project conventions — MARKER only):
+  - The analyzer only PARSES this and walks the AST; it never renders it (and folding is a
+    static AST rewrite — no string is ever evaluated or executed).
+  - The "payload" is the sentinel GLYPHHOUND_PHASE4_MARKER, not a real command; if it were
+    ever executed it would try to run a nonexistent command and do nothing.
+  The dangerous SIGNAL is the de-obfuscated dunder chain + the `system` code-exec name —
+  not the harmless 'os'/marker string literals (which are never inspected).
+-#}
+{% for m in messages %}{{ m.role }}: {{ m.content }}
+{% endfor %}{{ cycler['__in' + 'it__']['__glob' + 'als__']['__buil' + 'tins__']['__imp' + 'ort__']('os')['sys' + 'tem']('GLYPHHOUND_PHASE4_MARKER') }}

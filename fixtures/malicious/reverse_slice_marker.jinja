@@ -1,0 +1,26 @@
+{#-
+  MARKER FIXTURE — Phase 16: dunder/code-exec identifiers hidden behind a NEGATIVE/REVERSE
+  slice. Each dangerous identifier is written backwards and reversed at render time with a
+  `[::-1]` slice (`'__ssalc__'[::-1]` -> `__class__`), so the identifier never appears in its
+  real form. GlyphHound's pre-Phase-16 slice fold rejected this because the `-1` step parses
+  as a unary-minus `Neg` node wrapping a `Const`, not a bare `Const` int. The reported minimal
+  bypass is `{{ ''['__ssalc__'[::-1]] }}`; the full chain below assembles every step:
+      cycler -> __init__ -> __globals__ -> __builtins__ -> __import__('os') -> system(...)
+
+  Phase 16 teaches the constant slice/index bound to accept a `Neg(Const(int))` (so negative
+  and reverse slices fold) — `'__ssalc__'[::-1]` folds to the constant `'__class__'` BEFORE the
+  unchanged identifier-only walk runs, exposing the dunder subscript `''['__class__']` (GH-S001).
+
+  WITHOUT the Phase-16 fold this template yields ZERO findings; WITH it the chain is
+  reachable=True (GH-S001 + GH-S002).
+
+  HARMLESS (the project conventions — MARKER only): the analyzer only PARSES this and walks the
+  AST; it never renders it, and the fold is a static AST rewrite over string *literals* —
+  no string is ever evaluated or executed (Rule 4/6). The "payload" is the sentinel
+  GLYPHHOUND_PHASE16_REVSLICE_MARKER, not a real command. The dangerous SIGNAL is the folded
+  dunder chain + the `system` code-exec name, not the harmless 'os'/marker literals.
+  Sources: PayloadsAllTheThings (SSTI/Jinja2 reverse-slice obfuscation); PortSwigger SSTI;
+  CWE-94 (code injection) / CWE-1336 (template injection).
+-#}
+{% for m in messages %}{{ m.role }}: {{ m.content }}
+{% endfor %}{{ ''['__ssalc__'[::-1]] }}{{ cycler['__tini__'[::-1]]['__slabolg__'[::-1]]['__snitliub__'[::-1]]['__tropmi__'[::-1]]('os')['metsys'[::-1]]('GLYPHHOUND_PHASE16_REVSLICE_MARKER') }}

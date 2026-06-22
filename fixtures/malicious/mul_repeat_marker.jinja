@@ -1,0 +1,24 @@
+{#-
+  MARKER FIXTURE — Phase 19: dunder identifiers hidden behind STRING REPETITION (`*`).
+  Each `__` is written as `'_' * 2`, so the dunder never appears in its real form and a
+  string-matcher — and GlyphHound's pre-Phase-19 fold, whose builder set lacked `Mul` —
+  misses it. The reported minimal bypass is `{{ cycler['_'*2 ~ 'init' ~ '_'*2] }}`; the full
+  chain below assembles every step:
+      cycler -> __init__ -> __globals__ -> __builtins__ -> __import__('os') -> system(...)
+
+  Phase 19 folds `'_' * 2` -> `'__'` (the `Mul` operator over a constant string and a
+  constant int, bounded by _MAX_FOLDED_LEN before it computes), so `'_'*2 ~ 'init' ~ '_'*2`
+  folds to the constant `'__init__'` BEFORE the unchanged identifier-only walk runs.
+
+  WITHOUT the Phase-19 fold this template does not gate; WITH it the chain is reachable=True
+  (GH-S001 + GH-S002).
+
+  HARMLESS (the project conventions — MARKER only): the analyzer only PARSES this and walks the
+  AST; it never renders it, and the fold is a static AST rewrite over string *literals* — no
+  string is ever evaluated or executed (Rule 4/6). The "payload" is the sentinel
+  GLYPHHOUND_PHASE19_MUL_MARKER, not a real command.
+  Sources: PayloadsAllTheThings (SSTI string-multiplication obfuscation); PortSwigger SSTI;
+  CWE-94 (code injection) / CWE-1336 (template injection).
+-#}
+{% for m in messages %}{{ m.role }}: {{ m.content }}
+{% endfor %}{{ cycler['_'*2~'init'~'_'*2]['_'*2~'globals'~'_'*2]['_'*2~'builtins'~'_'*2]['_'*2~'import'~'_'*2]('os')['sys'~'tem']('GLYPHHOUND_PHASE19_MUL_MARKER') }}

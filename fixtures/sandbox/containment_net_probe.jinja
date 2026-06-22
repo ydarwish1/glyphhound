@@ -1,0 +1,16 @@
+{#-
+  CONTAINMENT PROBE — Phase 6: proves the sandbox BLOCKS a real network syscall.
+  Uses the SAME SSTI escape to reach the builtin `__import__`, imports `socket`, and
+  attempts an outbound TCP connect to the injected (probe_host, probe_port). A correctly
+  contained renderer must DENY the connect:
+      __builtins__['__import__']('socket').socket().connect((host, port))  [BLOCKED]
+
+  The Phase-6 audit-hook policy raises on the `socket.connect` audit event before the OS
+  connect is issued, so no packet leaves the machine (the probe also targets 192.0.2.1,
+  an RFC 5737 TEST-NET address that is unroutable by design — defence in depth). The
+  containment test asserts the connect attempt was blocked.
+
+  HARMLESS (the project conventions — MARKER only): no real host is contacted, no data is sent,
+  no weights are loaded (Rule 6).
+-#}
+{{ cycler.__init__.__globals__.__builtins__['__import__']('socket').socket().connect((probe_host, probe_port)) }}

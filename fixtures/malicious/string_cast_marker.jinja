@@ -1,0 +1,23 @@
+{#-
+  MARKER FIXTURE — Phase 19: dunder/code-exec identifiers assembled by concatenation and then
+  wrapped in the `|string` cast to BREAK the fold. `('__in' ~ 'it__')|string` evaluates to
+  `__init__`, but GlyphHound's pre-Phase-19 fold stopped at the `|string` filter (it folded the
+  inner concat to a `Const`, then the un-handled `|string` left the result a non-`Const`), so
+  the dunder subscript key was never seen. The reported minimal bypass is
+  `{{ cycler[('__in'~'it__')|string] }}`; the full chain below wraps every step in `|string`:
+      cycler -> __init__ -> __globals__ -> __builtins__ -> __import__('os') -> system(...)
+
+  Phase 19 adds `|string` to the pure-transform whitelist (identity on a string), so the
+  already-folded inner `Const` passes through unchanged and the dunder is exposed to the
+  unchanged identifier-only walk.
+
+  WITHOUT the Phase-19 fold this template does not gate; WITH it the chain is reachable=True
+  (GH-S001 + GH-S002).
+
+  HARMLESS (the project conventions — MARKER only): parsed + folded over string *literals*, never
+  rendered or evaluated (Rule 4/6). The "payload" is the sentinel GLYPHHOUND_PHASE19_STRINGCAST_MARKER.
+  Sources: PayloadsAllTheThings (SSTI filter-wrapping obfuscation); PortSwigger SSTI;
+  CWE-94 (code injection) / CWE-1336 (template injection).
+-#}
+{% for m in messages %}{{ m.role }}: {{ m.content }}
+{% endfor %}{{ cycler[('__in'~'it__')|string][('__glob'~'als__')|string][('__buil'~'tins__')|string][('__imp'~'ort__')|string]('os')[('sys'~'tem')|string]('GLYPHHOUND_PHASE19_STRINGCAST_MARKER') }}

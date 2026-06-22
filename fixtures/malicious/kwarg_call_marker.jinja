@@ -1,0 +1,16 @@
+{#-
+  MARKER FIXTURE — Phase 10: dunder names reached via getattr() with a KEYWORD argument.
+  `getattr(obj, name='__class__')` reaches a dunder just like `getattr(obj, '__class__')`,
+  but the name rides in a keyword argument. Pre-Phase-10 this was caught only as a generic
+  GH-S004 reflection call (it still gated CI); Phase 10 resolves the keyword name so it
+  classifies as the precise GH-S001 dunder. The names here are also concatenation-built, so
+  the fold runs first: cycler -> __init__ -> __globals__ -> __builtins__ -> __import__ -> system.
+  (A dunder *call* with a keyword arg — `obj.__import__(name='os')` — is already caught via
+  the dunder attribute access itself.)
+
+  HARMLESS (the project conventions — MARKER only): parsed + walked, never rendered. The
+  "payload" is the sentinel GLYPHHOUND_PHASE10_KWARG_MARKER. After folding the chain is a
+  reachable GH-S001 (+ GH-S002) chain with the GH-S004 reflection findings replaced.
+-#}
+{% for m in messages %}{{ m.role }}: {{ m.content }}
+{% endfor %}{{ getattr(getattr(getattr(getattr(cycler, name='__in'+'it__'), name='__globals__'), name='__builtins__'), name='__import__')('os').system('GLYPHHOUND_PHASE10_KWARG_MARKER') }}
