@@ -96,7 +96,7 @@ runs:
     - name: Upload SARIF to code scanning
       # Only a clean (0) or finding (1) run produced a valid SARIF; a scan error (2) wrote none.
       if: ${{ inputs.upload-sarif == 'true' && steps.scan.outputs.exit-code != '2' }}
-      uses: github/codeql-action/upload-sarif@v3
+      uses: github/codeql-action/upload-sarif@v4
       with:
         sarif_file: ${{ inputs.sarif-file }}
         category: glyphhound
