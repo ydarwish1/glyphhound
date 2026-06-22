@@ -59,7 +59,7 @@ def test_parse_over_http_range():
 
 def test_http_range_small_chunk_fraction_is_tiny():
     # With a small chunk the fetched fraction is clearly << total, demonstrating the
-    # Rule 6 invariant on the network path too.
+    # no-weights invariant on the network path too.
     payload = build_gguf(TEMPLATE, tokens=64) + b"\x00" * (8 * 1024 * 1024)
     with RangeServer(payload) as server:
         window = _HttpRangeWindow(server.url, chunk=64 * 1024)
@@ -146,7 +146,7 @@ def test_multi_chunk_http_fetch():
 
 def test_malicious_206_oversend_is_capped():
     # A hostile server claims a small range but floods the whole payload; we must read
-    # only what we asked for (Rule 6 hardening).
+    # only what we asked for (bounded-fetch hardening).
     payload = build_gguf(TEMPLATE) + b"\x00" * (4 * 1024 * 1024)
     with RangeServer(payload, oversend=True) as server:
         window = _HttpRangeWindow(server.url, chunk=64 * 1024)

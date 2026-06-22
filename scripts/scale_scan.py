@@ -1,24 +1,23 @@
-"""Phase 17 — resumable, rate-limit-aware prevalence scale-scan (parse-only, NO weights).
+"""Phase 17 -- resumable, rate-limit-aware prevalence scale-scan (parse-only, NO weights).
 
 Measure how common code-exec-capable chat templates are in the wild: crawl the Hub's
 most-downloaded text-generation models, read each one's CANONICAL chat template via the
-Phase-14 source (``read_hf_source_template`` — ``tokenizer_config.json`` /
+Phase-14 source (``read_hf_source_template`` -- ``tokenizer_config.json`` /
 ``chat_template.jinja`` / safetensors ``__metadata__``, all small metadata files), and scan
-it with the real CI path. Everything goes through the analyzer's *parse* path only — a
-template is never rendered (no ``--confirm``), and weights are never fetched (Rule 6).
+it with the real CI path. Everything goes through the analyzer's *parse* path only -- a
+template is never rendered (no ``--confirm``), and weights are never fetched.
 
-SAFETY / privacy (owner's call + the project conventions): we record **summaries only** — the
-template's sha256, finding counts, gating/obfuscation flags, the flagged sink identifiers and
-their lines. The raw template TEXT is never written to disk, so a malicious payload never
-lands on the machine; a flagged model can be re-fetched on demand by its pinned SHA for
-triage. Nothing here is published.
+SAFETY / privacy: we record **summaries only** -- the template's sha256, finding counts,
+gating/obfuscation flags, the flagged sink identifiers and their lines. The raw template
+TEXT is never written to disk, so a malicious payload never lands on the machine; a flagged
+model can be re-fetched on demand by its pinned SHA for triage. Nothing here is published.
 
 Resumable: results are appended one JSON object per model to a JSONL checkpoint; a re-run
 skips models already recorded. Rate-limit-aware: every Hub request (the model listing and the
 metadata fetches) goes through the Phase-17 backoff in :mod:`glyphhound.acquire.hf_source`
 (HF_TOKEN auth if set, exponential retry on HTTP 429/503). Reproducible: each model is pinned
 by commit SHA, so ``--rescan`` re-measures the exact recorded sample against the current
-analyzer with no fresh crawl (Rule 7).
+analyzer with no fresh crawl.
 
 Run (needs network; metadata reads only, no weights):
     .venv/Scripts/python.exe scripts/scale_scan.py --limit 100
@@ -58,7 +57,7 @@ _MAX_PAGES = 60      # safety cap on API list pages (100 repos/page)
 
 def _get_json(url: str) -> object:
     # Cap the read at the metadata limit so even a hostile/compromised Hub response can never
-    # stream an unbounded body (Rule 6 — the same guard hf_source._http_get applies).
+    # stream an unbounded body (the same guard hf_source._http_get applies).
     with hf_source._open_with_retry(hf_source._build_request(url)) as resp:
         data = hf_source._read_capped(resp, hf_source._HF_SOURCE_MAX_BYTES)
     return json.loads(data)
@@ -75,8 +74,8 @@ def _get_json_and_next(url: str) -> tuple[object, str | None]:
 def list_top_models(limit: int, *, max_pages: int = _MAX_PAGES) -> list[str]:
     """The ``limit`` most-downloaded text-generation repo ids, cursor-paginated.
 
-    Most-downloaded shifts day to day, so the *crawl* is non-deterministic — but each model is
-    pinned by SHA when scanned and recorded, so the resulting study is reproducible (Rule 7).
+    Most-downloaded shifts day to day, so the *crawl* is non-deterministic -- but each model is
+    pinned by SHA when scanned and recorded, so the resulting study is reproducible.
     """
     url = (f"{_API}?pipeline_tag=text-generation&sort=downloads&direction=-1"
            f"&limit=100&full=false")
@@ -96,17 +95,17 @@ def list_top_models(limit: int, *, max_pages: int = _MAX_PAGES) -> list[str]:
 
 
 def resolve_sha(repo: str) -> str:
-    """Pin ``repo`` by its current commit SHA (determinism, Rule 7)."""
+    """Pin ``repo`` by its current commit SHA (determinism)."""
     return _get_json(f"{_API}/{repo}")["sha"]
 
 
-# --- scanning (summaries only — NO raw template text leaves memory) --------------
+# --- scanning (summaries only -- NO raw template text leaves memory) --------------
 
 def summarize_template(name: str | None, text: str) -> dict:
-    """A summary record for one chat template. NEVER includes the raw template text (Rule 4).
+    """A summary record for one chat template. NEVER includes the raw template text.
 
     ``obfuscated`` is True when the template gates only *after* de-obfuscation
-    (``analyze_template``) and not on the raw walk (``analyze_ast(parse_template(...))``) —
+    (``analyze_template``) and not on the raw walk (``analyze_ast(parse_template(...))``) --
     i.e. the code-exec capability was hidden behind concat/format/slice/case-fold/etc. and
     a string-matcher would miss it. That gates-only-after-folding gap is GlyphHound's edge.
     """
@@ -134,7 +133,7 @@ def scan_repo(repo: str, revision: str) -> dict:
     """Read every canonical template in ``repo`` (pinned at ``revision``) and summarize each.
 
     A template that fails to parse is recorded as a coverage gap (``parse_error``), not a
-    finding — honest accounting, like the corpus build's parse-skips.
+    finding -- honest accounting, like the corpus build's parse-skips.
     """
     raw = read_hf_source_template(repo, revision=revision)
     templates: list[dict] = []
@@ -242,7 +241,7 @@ def _load_jsonl(path: str) -> list[dict]:
 def rescan(out_path: str) -> int:
     """Re-fetch each recorded (model, revision) and re-summarize with the current analyzer.
 
-    Deterministic given the pins (Rule 7); used to confirm the study reproduces after an
+    Deterministic given the pins; used to confirm the study reproduces after an
     analyzer change. A since-removed/gated repo is dropped from the sample.
     """
     if not os.path.exists(out_path):

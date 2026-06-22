@@ -8,7 +8,7 @@ Ollama stores each model as an OCI-style manifest plus content-addressed blobs:
 Each manifest ``layers`` entry carries a ``mediaType``; the chat template is the
 layer typed ``application/vnd.ollama.image.template``. We read only that one small
 blob (and verify its sha256), never the ``...image.model`` weights blob — we never
-even open it (the project conventions).
+even open it.
 """
 
 from __future__ import annotations

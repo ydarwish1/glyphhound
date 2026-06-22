@@ -1,14 +1,14 @@
-"""Phase 2 verification — sink detection (string/structural baseline).
+"""Phase 2 verification -- sink detection (string/structural baseline).
 
-Offline and deterministic (the project conventions): it analyzes on-disk fixtures and the
-vendored benign corpus — no network, no weights, and it never *renders* a template
+Offline and deterministic: it analyzes on-disk fixtures and the
+vendored benign corpus -- no network, no weights, and it never *renders* a template
 (only parses + walks the AST), so reading the malicious fixtures cannot execute them.
 
-Checks (the design docs / the project history Phase 2 tracker):
+Checks:
   1. The CVE-2024-34359 MARKER fixture (and the |attr pivot fixture) are FLAGGED.
-  2. The real benign corpus is CLEAN — zero false positives (Rule 9).
-  3. §7 payoff: a model whose DEFAULT template is benign but a NAMED template carries
-     the sink is caught, and the finding is tagged with the named template.
+  2. The real benign corpus is CLEAN -- zero false positives.
+  3. Named-template payoff: a model whose DEFAULT template is benign but a NAMED template
+     carries the sink is caught, and the finding is tagged with the named template.
 
 Run:  .venv/Scripts/python.exe scripts/verify_phase2.py
 Exit code is non-zero if any check fails.
@@ -40,7 +40,7 @@ def _jinja_files(directory: str) -> list[str]:
 
 def verify_malicious_flagged() -> bool:
     print("=" * 78)
-    print("Phase 2 — malicious MARKER fixtures must be FLAGGED")
+    print("Phase 2 -- malicious MARKER fixtures must be FLAGGED")
     print("=" * 78)
     files = _jinja_files(MALICIOUS_DIR)
     all_ok = bool(files)
@@ -58,7 +58,7 @@ def verify_malicious_flagged() -> bool:
 
 def verify_benign_clean() -> bool:
     print("\n" + "=" * 78)
-    print("Phase 2 — real benign corpus must be CLEAN (Rule 9: measured false positives)")
+    print("Phase 2 -- real benign corpus must be CLEAN (measured false positives)")
     print("=" * 78)
     files = _jinja_files(BENIGN_DIR)
     flagged = 0
@@ -77,7 +77,7 @@ def verify_benign_clean() -> bool:
 
 def verify_named_template_payoff() -> bool:
     print("\n" + "=" * 78)
-    print("Phase 2 — §7 payoff: sink hidden in a NAMED template is still caught")
+    print("Phase 2 -- named-template payoff: sink hidden in a NAMED template is still caught")
     print("=" * 78)
     raw = RawTemplate(
         source_ref="synthetic://hidden-sink",

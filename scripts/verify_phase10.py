@@ -1,18 +1,18 @@
-"""Phase 10 verification — obfuscation coverage++ (the measured headline).
+"""Phase 10 verification -- obfuscation coverage++.
 
 Phase 10 widens the de-obfuscator from constant `+`/`~` concatenation to the other constant
-string builders — `str.format()`, slice/index, the `|join` and `|replace` filters — and resolves
+string builders -- `str.format()`, slice/index, the `|join` and `|replace` filters -- and resolves
 a dunder name that hides in a keyword argument (`getattr(obj, name=...)`, `|attr(name=...)`).
 
-Checks (the project history Phase 10 tracker):
+Checks:
   (a) Each new family's MARKER fixture folds to a REACHABLE GH-S001 (+GH-S002) chain; the four
       const-builder fixtures yield ZERO findings WITHOUT folding (the string-matcher blind spot),
       and the kwarg fixture is UPGRADED from a GH-S004 reflection call to the precise GH-S001.
   (b) The same builders over BENIGN content do not flag, and the 120-template corpus
-      false-positive rate is STILL 0.00% after the analyzer change (Rule 9, re-measured).
+      false-positive rate is STILL 0.00% after the analyzer change (re-measured).
   (c) The head-to-head benchmark's GlyphHound-only edge has WIDENED (slice / |join / |replace
-      are caught by GlyphHound and missed by ModelAudit), and two runs are byte-identical
-      (Rule 7). Deferred if the isolated `.venv-modelaudit` env is absent (like verify_phase8).
+      are caught by GlyphHound and missed by ModelAudit), and two runs are byte-identical.
+      Deferred if the isolated `.venv-modelaudit` env is absent (like verify_phase8).
 
 Run:  .venv/Scripts/python.exe scripts/verify_phase10.py
 Exit code is non-zero if any non-deferred check fails.
@@ -43,7 +43,7 @@ CONST_BUILDER_FIXTURES = [
 ]
 KWARG_FIXTURE = "kwarg_call_marker.jinja"
 
-# The same constant builders over benign content must NOT flag (Rule 9).
+# The same constant builders over benign content must NOT flag.
 BENIGN_NEAR_MISSES = [
     "{{ 'r{}e'.format('ol') }}",
     "{{ 'hello world'[:5] }}",
@@ -63,7 +63,7 @@ def _reachable_rules(findings) -> set[str]:
 
 def verify_family_fixtures() -> bool:
     print("=" * 78)
-    print("Phase 10 (a) — each new obfuscation family folds to a reachable sink")
+    print("Phase 10 (a) -- each new obfuscation family folds to a reachable sink")
     print("=" * 78)
     ok = True
     for fname in CONST_BUILDER_FIXTURES:
@@ -92,7 +92,7 @@ def verify_family_fixtures() -> bool:
 
 def verify_benign_and_corpus() -> bool:
     print("\n" + "=" * 78)
-    print("Phase 10 (b) — benign builders clean + corpus FP still 0.00% (Rule 9, re-measured)")
+    print("Phase 10 (b) -- benign builders clean + corpus FP still 0.00% (re-measured)")
     print("=" * 78)
     near_ok = True
     for src in BENIGN_NEAR_MISSES:
@@ -119,7 +119,7 @@ def verify_benign_and_corpus() -> bool:
 
 def verify_benchmark_edge_widened() -> bool:
     print("\n" + "=" * 78)
-    print("Phase 10 (c) — head-to-head edge widened (slice/|join/|replace), two runs identical")
+    print("Phase 10 (c) -- head-to-head edge widened (slice/|join/|replace), two runs identical")
     print("=" * 78)
     import run_benchmark as bench
     exe = bench.find_modelaudit()
@@ -150,7 +150,7 @@ def verify_benchmark_edge_widened() -> bool:
     print()
     print(f"[{'OK' if new_edge_ok else 'FAIL'}]   slice / |join / |replace: GlyphHound catches, ModelAudit misses")
     print(f"[{'OK' if total_edges >= 6 else 'FAIL'}]   GlyphHound-only obfuscation edges: {total_edges} (was 3 pre-Phase-10)")
-    print(f"[{'OK' if deterministic else 'FAIL'}]   two benchmark runs produce a byte-identical table (Rule 7)")
+    print(f"[{'OK' if deterministic else 'FAIL'}]   two benchmark runs produce a byte-identical table")
     ok = new_edge_ok and total_edges >= 6 and deterministic
     print(f"[{'OK' if ok else 'FAIL'}] the measured ModelAudit lead widened, honestly and deterministically.")
     return ok

@@ -23,12 +23,12 @@ HIGH = "high"
 # --- §4 Sink Catalog -----------------------------------------------------------
 # Attribute/subscript names that climb Python's object model toward a sandbox escape.
 # None of these appear AS IDENTIFIERS in a legitimate message-formatting template
-# (measured: zero identifier occurrences across the real benign corpus, the project conventions
-# Rule 9 — the analyzer matches AST identifiers, never string contents, so the literal
-# "open" inside a tool-schema string in a benign template is ignored).
+# (measured: zero identifier occurrences across the real benign corpus — the analyzer
+# matches AST identifiers, never string contents, so the literal "open" inside a
+# tool-schema string in a benign template is ignored).
 #
-# Curated from public SSTI / Python sandbox-escape research (Rule 3 — cite, don't
-# weaponize; Rule 4 — exercised by MARKER fixtures only):
+# Curated from public SSTI / Python sandbox-escape research (cite, don't weaponize;
+# exercised by MARKER fixtures only):
 #   - PayloadsAllTheThings — Server Side Template Injection (Jinja2): the
 #     __class__/__mro__/__subclasses__/__globals__/__builtins__ gadget chain.
 #   - PortSwigger Web Security Academy — Server-side template injection.
@@ -75,7 +75,7 @@ REFLECTION_BUILTINS = frozenset({"getattr", "setattr"})
 # already catches. Treating a gadget as a taint *source* is Phase 3, where the
 # "builds toward it" reachability that makes them safe-to-flag lives.
 
-# --- CWE classification (Phase 12, PRD G7) -------------------------------------
+# --- CWE classification (Phase 12) ---------------------------------------------
 # Two CWEs span the catalog: the dunder reach and the code-exec names ARE the
 # code-injection mechanism (CWE-94), while the |attr filter and getattr/setattr
 # reflection are the template-engine-specific evasion special-elements (CWE-1336,
@@ -85,7 +85,7 @@ CWE_CODE_INJECTION = "CWE-94"        # Improper Control of Generation of Code ('
 CWE_TEMPLATE_INJECTION = "CWE-1336"  # Improper Neutralization of Special Elements in a Template Engine
 
 # Each catalog entry is one rule_id with a severity + short rationale + CWE id, so every
-# finding is explainable and standards-mapped (ARCHITECTURE.md §4, PRD G7).
+# finding is explainable and standards-mapped (ARCHITECTURE.md §4).
 RULE_CATALOG: dict[str, tuple[str, str, str, str]] = {
     "GH-S001": ("dunder-attribute", CRITICAL,
                 "attribute/subscript/|attr access to a Python dunder used for sandbox escape",

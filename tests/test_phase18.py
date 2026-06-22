@@ -1,10 +1,10 @@
-"""Phase 18 — Linux sandbox hardening tests (the project conventions, fixture/observation-driven).
+"""Phase 18 — Linux sandbox hardening tests (fixture/observation-driven).
 
 The Linux kernel/OS backstops (seccomp, rlimits) are proven via SUBPROCESSES so a SIGSYS /
 SIGXCPU kill is isolated from the test runner; they skip off Linux. The symlink-escape fix in
 the audit-hook policy is exercised wherever symlink creation is permitted (skipped on Windows,
 where it needs privileges). ``apply_linux_hardening`` must be a no-op off Linux so the Windows
-path stays byte-identical (Rule 10). MARKER-only (Rule 4); no weights (Rule 6).
+path stays byte-identical. MARKER-only; no weights.
 """
 
 from __future__ import annotations

@@ -1,4 +1,4 @@
-"""Stage 5 — SARIF 2.1.0 renderer (ARCHITECTURE.md §3 Stage 5; the design docs).
+"""Stage 5 — SARIF 2.1.0 renderer (ARCHITECTURE.md §3 Stage 5).
 
 Each :class:`~.models.Report` finding becomes a SARIF ``result``: ``ruleId`` = the rule
 id, ``level`` mapped from severity (critical -> error, high -> warning), a
@@ -9,9 +9,9 @@ the evidence. ``runs[].tool.driver.rules`` is built from the analyzer's ``RULE_C
 The output validates against the official OASIS SARIF 2.1.0 schema (vendored at
 ``schemas/sarif-2.1.0.json`` and checked in the offline test/verify layer). This module
 emits with the stdlib ``json`` only — it never imports ``jsonschema`` (a dev-only dep) —
-so the shipped tool stays jinja2-only. It is deterministic (the project conventions): no
-timestamps, rules in sorted id order, results in the findings' given order, fixed key
-order. It formats ``Finding[]`` only and never renders a template.
+so the shipped tool stays jinja2-only. It is deterministic: no timestamps, rules in sorted
+id order, results in the findings' given order, fixed key order. It formats ``Finding[]``
+only and never renders a template.
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ SARIF_VERSION = "2.1.0"
 # Severity -> SARIF level. SARIF levels are none/note/warning/error.
 SEVERITY_TO_SARIF_LEVEL: dict[str, str] = {CRITICAL: "error", HIGH: "warning"}
 
-# Stable rule order, independent of dict construction order (determinism, Rule 7).
+# Stable rule order, independent of dict construction order (determinism).
 _RULE_IDS = sorted(RULE_CATALOG)
 _RULE_INDEX = {rid: i for i, rid in enumerate(_RULE_IDS)}
 
@@ -108,7 +108,7 @@ def render_sarif(report: Report) -> str:
         "version": SARIF_VERSION,
         "runs": [{
             # informationUri is intentionally omitted — GlyphHound has no published
-            # project URL yet, and inventing one would be a (small) overclaim (Rule 3).
+            # project URL yet, and inventing one would be a (small) overclaim.
             "tool": {"driver": {
                 "name": "GlyphHound",
                 "version": __version__,

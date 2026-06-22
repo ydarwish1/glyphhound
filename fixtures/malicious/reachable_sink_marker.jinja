@@ -9,7 +9,7 @@
   a real base object through dunders onto a code-exec name. Contrast bare `{{ cycler() }}`
   or a variable merely named `class`, which build toward nothing.
 
-  HARMLESS (the project conventions — MARKER only):
+  HARMLESS (MARKER only):
   - The analyzer only PARSES this and walks the AST; it never renders it.
   - The "payload" is the sentinel GLYPHHOUND_PHASE3_MARKER, not a real command; if it
     were ever executed it would try to run a nonexistent command and do nothing.

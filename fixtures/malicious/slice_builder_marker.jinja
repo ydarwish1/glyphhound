@@ -5,7 +5,7 @@
   folds each constant slice back to the identifier, so the unchanged sink walk fires:
   cycler -> __init__ -> __globals__ -> __builtins__ -> __import__ -> system.
 
-  HARMLESS (the project conventions — MARKER only): parsed + walked, never rendered. The
+  HARMLESS (MARKER only): parsed + walked, never rendered. The
   "payload" is the sentinel GLYPHHOUND_PHASE10_SLICE_MARKER. WITHOUT folding: 0 findings;
   WITH folding: a reachable GH-S001 (+ GH-S002) chain.
 -#}

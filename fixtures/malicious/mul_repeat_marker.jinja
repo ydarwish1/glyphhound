@@ -13,9 +13,9 @@
   WITHOUT the Phase-19 fold this template does not gate; WITH it the chain is reachable=True
   (GH-S001 + GH-S002).
 
-  HARMLESS (the project conventions — MARKER only): the analyzer only PARSES this and walks the
+  HARMLESS (MARKER only): the analyzer only PARSES this and walks the
   AST; it never renders it, and the fold is a static AST rewrite over string *literals* — no
-  string is ever evaluated or executed (Rule 4/6). The "payload" is the sentinel
+  string is ever evaluated or executed. The "payload" is the sentinel
   GLYPHHOUND_PHASE19_MUL_MARKER, not a real command.
   Sources: PayloadsAllTheThings (SSTI string-multiplication obfuscation); PortSwigger SSTI;
   CWE-94 (code injection) / CWE-1336 (template injection).

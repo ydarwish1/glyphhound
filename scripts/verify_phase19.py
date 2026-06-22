@@ -1,6 +1,6 @@
 """Phase 19 verification -- close the hidden string-building obfuscation bypasses.
 
-Offline and deterministic (the project conventions): it analyzes on-disk fixtures and the vendored
+Offline and deterministic: it analyzes on-disk fixtures and the vendored
 benign corpus -- no network, no weights, and it never *renders* a template (only parses,
 folds, and walks the AST), so reading the malicious fixtures cannot execute them. The fold is
 a static AST rewrite over string literals; no string is ever evaluated.
@@ -13,7 +13,7 @@ builders slipped past clean -- and a string-matcher misses them too: string repe
 one pure-constant-string evaluator to fold these, bounding ``Mul`` and printf widths against
 ``_MAX_FOLDED_LEN`` so a pathological repetition/width cannot allocate a giant transient.
 
-Checks (the design docs row 19 / the project history Phase 19 tracker):
+Checks:
   (a) The three Phase-19 MARKER fixtures yield ZERO findings WITHOUT the fold (raw walker) and a
       reachable GH-S001 + GH-S002 chain WITH the full pipeline -- and they gate CI.
   (b) The reported minimal bypass forms (``*`` / ``%`` / ``|format`` / ``|string``) now GATE.
@@ -21,8 +21,8 @@ Checks (the design docs row 19 / the project history Phase 19 tracker):
       ceiling (runtime/loop-built names), and (ii) container indirection that leaves the
       identifier *literally visible* (``['__init__'][0]``, ``|first``, ``namespace(c=...).c``)
       -- a string-matcher already catches the visible literal, so it is out of the
-      obfuscation-edge scope (recorded here as a known limitation, honest per Rule 3).
-  (d) Rule 9: the real benign corpus stays 0.00% (0/120, presence AND gating) and the benign
+      obfuscation-edge scope (recorded here as a known limitation, honestly).
+  (d) The real benign corpus stays 0.00% (0/120, presence AND gating) and the benign
       fixtures clean, plus Phase-19 near-misses (``'=' * 40`` separators, printf with
       variables, ``|string`` casts) -- re-measured after the analyzer change.
 
@@ -59,11 +59,11 @@ BYPASS_FORMS = [
     "{{ cycler[('__in'+'it__')|string] }}",          # |string cast around a folded concat
 ]
 
-# Documented gaps that stay unflagged (Rule 4/6 -- never render to "resolve" them).
+# Documented gaps that stay unflagged (never render to "resolve" them).
 # (i) the PERMANENT dynamic ceiling (runtime/loop-built names; the gated --confirm sandbox is
 #     the backstop).
 # (ii) pure-const CONTAINER selection (list/tuple/dict index, |first, namespace.c) -- NOT yet
-#     folded. Honest accounting (Rule 3): a BARE-literal container form (['__init__'][0]) leaves
+#     folded. Honest accounting: a BARE-literal container form (['__init__'][0]) leaves
 #     the identifier visible to a string-matcher, but a SPLIT form (['__in'+'it__'][0]) still
 #     hides it, so this is a genuine (if contrived) RESIDUAL BYPASS to fold in a later phase --
 #     not a string-matcher-visible gap. Recorded here so it is tracked, not silently missed.
@@ -78,7 +78,7 @@ DOCUMENTED_GAPS = [
     "{% set ns = namespace(c='__init__') %}{{ cycler[ns.c] }}",  # namespace attr
 ]
 
-# Benign Phase-19 near-misses that MUST stay clean (Rule 9) -- common real-template uses of
+# Benign Phase-19 near-misses that MUST stay clean -- common real-template uses of
 # the newly-folded ops.
 BENIGN_PROBES = [
     "{{ '=' * 40 }}",                       # separator line (folds to a long string, no sink)
@@ -148,7 +148,7 @@ def verify_documented_gaps() -> bool:
         ok = ok and good
         print(f"  [{'OK' if good else 'FAIL'}] {form[:58]:58s} -> reachable={reachable}")
     print(f"[{'OK' if ok else 'FAIL'}] dynamic + literal-visible forms are not statically folded "
-          "(string-matchers catch the visible ones; documented, Rule 3).")
+          "(string-matchers catch the visible ones; documented).")
     return ok
 
 
@@ -166,7 +166,7 @@ def _gating_fp(directory: str) -> tuple[int, int, int]:
 
 def verify_no_false_positives() -> bool:
     print("\n" + "=" * 78)
-    print("Phase 19 (d) -- Rule 9: corpus + benign fixtures + Phase-19 near-misses stay CLEAN")
+    print("Phase 19 (d) -- corpus + benign fixtures + Phase-19 near-misses stay CLEAN")
     print("=" * 78)
     ok = True
     for probe in BENIGN_PROBES:
@@ -183,7 +183,7 @@ def verify_no_false_positives() -> bool:
     corpus_ok = (n_corpus >= 100 and gating_corpus == 0 and present_corpus == 0
                  and n_benign >= 10 and gating_benign == 0 and present_benign == 0)
     ok = ok and corpus_ok
-    print(f"[{'OK' if ok else 'FAIL'}] corpus FP 0.00% gating AND 0 presence; near-misses clean (Rule 9).")
+    print(f"[{'OK' if ok else 'FAIL'}] corpus FP 0.00% gating AND 0 presence; near-misses clean.")
     return ok
 
 

@@ -28,7 +28,7 @@
       "http": 43,
       "other": 0
     },
-    "source": "Phase-14 HF canonical source (tokenizer_config.json / chat_template.jinja / safetensors __metadata__); metadata reads only, no weights (Rule 6)",
+    "source": "Phase-14 HF canonical source (tokenizer_config.json / chat_template.jinja / safetensors __metadata__); metadata reads only, no weights",
     "method": "make_report(analyze_template(text)).exit_code != 0 == gating FP (the real CI gate); deduped by template sha256 and excluded from the pinned corpus",
     "rescanned": true,
     "rescan_dropped_since_audit": 0

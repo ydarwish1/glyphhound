@@ -1,18 +1,18 @@
-"""Phase 4 verification — de-obfuscation pre-pass.
+"""Phase 4 verification -- de-obfuscation pre-pass.
 
-Offline and deterministic (the project conventions): it analyzes on-disk fixtures and the
-vendored benign corpus — no network, no weights, and it never *renders* a template (only
+Offline and deterministic: it analyzes on-disk fixtures and the
+vendored benign corpus -- no network, no weights, and it never *renders* a template (only
 parses, folds, and walks the AST), so reading the malicious fixtures cannot execute them.
 Folding is a static AST rewrite; no string is ever evaluated.
 
-Checks (the design docs row 4 / the project history Phase 4 tracker — "fold string-concat + getattr before
-analysis; catches getattr(x,'__cl'+'ass__') that Phase 2/3 missed"):
+Checks (fold string-concat + getattr before
+analysis; catches getattr(x,'__cl'+'ass__') that Phase 2/3 missed):
   (a) The NEW obfuscated MARKER fixture (a pure string-concat chain) yields ZERO findings
       WITHOUT folding, and a reachable GH-S001 (+ GH-S002) WITH folding.
   (b) getattr(x,'__cl'+'ass__') is upgraded from a GH-S004 reflection call to a reachable
       GH-S001 dunder finding (the dangerous reflection is REPLACED by the resolved access).
   (c) A benign string-concat ('rol'+'e') does NOT flag, and the real benign corpus stays at
-      0 reachable findings AFTER folding (Rule 9, re-measured post-fold).
+      0 reachable findings AFTER folding (re-measured post-fold).
 
 Run:  .venv/Scripts/python.exe scripts/verify_phase4.py
 Exit code is non-zero if any check fails.
@@ -35,7 +35,7 @@ MALICIOUS_DIR = os.path.join(ROOT, "fixtures", "malicious")
 
 # A role string built by concatenation: folds to 'role', a benign identifier -> no finding.
 BENIGN_CONCAT = "{% set r = 'rol' + 'e' %}{{ r }}"
-# The obfuscated reflection line Phase 2/3 could only see as GH-S004 (ARCHITECTURE.md §4).
+# The obfuscated reflection line Phase 2/3 could only see as GH-S004.
 OBFUSCATED_GETATTR = "{{ getattr(x, '__cl' + 'ass__') }}"
 
 
@@ -53,7 +53,7 @@ def _reachable_rules(findings) -> list[str]:
 
 def verify_concat_fixture() -> bool:
     print("=" * 78)
-    print("Phase 4 (a) — obfuscated MARKER fixture: 0 findings WITHOUT folding, reachable WITH")
+    print("Phase 4 (a) -- obfuscated MARKER fixture: 0 findings WITHOUT folding, reachable WITH")
     print("=" * 78)
     fname = "deobfuscated_sink_marker.jinja"
     src = _read(os.path.join(MALICIOUS_DIR, fname))
@@ -70,14 +70,14 @@ def verify_concat_fixture() -> bool:
 
 def verify_getattr_upgrade() -> bool:
     print("\n" + "=" * 78)
-    print("Phase 4 (b) — obfuscated getattr upgraded GH-S004 reflection -> GH-S001 dunder")
+    print("Phase 4 (b) -- obfuscated getattr upgraded GH-S004 reflection -> GH-S001 dunder")
     print("=" * 78)
     before = analyze_ast(parse_template(OBFUSCATED_GETATTR))   # raw walker
     after = analyze_template(OBFUSCATED_GETATTR)               # with folding
     before_rules = sorted({f.rule_id for f in before})
     after_rules = sorted({f.rule_id for f in after})
     print(f"source: {OBFUSCATED_GETATTR!r}")
-    print(f"  before folding: {before_rules}  (reflection only — dunder hidden in the Add)")
+    print(f"  before folding: {before_rules}  (reflection only -- dunder hidden in the Add)")
     print(f"  after  folding: {after_rules}  reachable: {_reachable_rules(after)}")
     # The resolved access REPLACES the reflection finding: GH-S001 reachable, no GH-S004.
     ok = (any(f.rule_id == "GH-S001" and f.reachable for f in after)
@@ -88,7 +88,7 @@ def verify_getattr_upgrade() -> bool:
 
 def verify_benign_unaffected() -> bool:
     print("\n" + "=" * 78)
-    print("Phase 4 (c) — benign concat clean + real corpus 0 reachable AFTER folding (Rule 9)")
+    print("Phase 4 (c) -- benign concat clean + real corpus 0 reachable AFTER folding")
     print("=" * 78)
     concat_findings = analyze_template(BENIGN_CONCAT)
     concat_ok = concat_findings == []

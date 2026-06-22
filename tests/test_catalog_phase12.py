@@ -1,8 +1,8 @@
 """Offline tests for Phase 12 — Catalog++ (CWE-mapped).
 
-Fixture-driven (the project conventions): the new gadget / code-exec MARKER fixtures must flag
+Fixture-driven: the new gadget / code-exec MARKER fixtures must flag
 reachable, every catalog rule carries a CWE id surfaced in JSON + SARIF, and the real
-benign corpus / fixtures stay clean (Rule 9 — identifier-only matching, so a literal
+benign corpus / fixtures stay clean (identifier-only matching, so a literal
 "open" inside a benign tool-schema string is never flagged). The analyzer only parses +
 walks the AST here; no template is rendered.
 """
@@ -138,7 +138,7 @@ def test_cwe_surfaces_in_sarif_and_validates():
         assert res["properties"]["cwe"] == cwe_for(res["ruleId"])
 
 
-# --- Rule 9: the new identifiers do NOT trip the real benign fixtures -----------
+# --- the new identifiers do NOT trip the real benign fixtures -------------------
 
 @pytest.mark.parametrize("fname", _jinja_files(BENIGN_DIR))
 def test_benign_fixtures_stay_clean_after_catalog_pp(fname):

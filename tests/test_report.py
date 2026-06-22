@@ -1,13 +1,13 @@
 """Offline, deterministic tests for the Stage-5 reporter (Phase 5).
 
-Fixture-driven (the project conventions): the malicious MARKER fixtures must produce a
+Fixture-driven: the malicious MARKER fixtures must produce a
 report that gates CI (non-zero exit), and the real benign corpus must produce exit 0
-(Rule 9 — false positives measured on real templates). The reporter only *formats*
+(false positives measured on real templates). The reporter only *formats*
 ``Finding[]`` — it never parses or renders a template, so nothing here can execute a
 fixture. The few inputs analyzed here go through ``analyze_template`` (parse + walk the
 AST only), exactly as the earlier phases do.
 
-The four checks of the design docs row 5 are covered:
+The four checks the reporter must satisfy are covered:
   (a) SARIF validates against the vendored official SARIF 2.1.0 schema + has results
       carrying ruleId / level / physicalLocation / message.
   (b) JSON round-trips (parse back to an equal Report) and carries the findings.
@@ -215,7 +215,7 @@ def test_summary_counts_match_findings():
     assert report.summary.severity_threshold == HIGH
 
 
-# --- determinism (Rule 7): same Finding[] -> identical bytes ---------------------
+# --- determinism: same Finding[] -> identical bytes ---------------------
 
 def test_reports_are_byte_identical_across_runs():
     f1 = analyze_template(_read(os.path.join(MALICIOUS_DIR, "cve_2024_34359_marker.jinja")))

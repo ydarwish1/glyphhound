@@ -3,7 +3,7 @@
 A flat, round-trippable serialization of a :class:`~.models.Report`
 (``Report.to_dict`` -> JSON -> ``Report.from_dict`` yields an equal report). Named
 ``json_report`` rather than ``json`` so it cannot be confused with the stdlib module it
-uses. Deterministic: fixed key order, trailing newline (the project conventions).
+uses. Deterministic: fixed key order, trailing newline.
 """
 
 from __future__ import annotations

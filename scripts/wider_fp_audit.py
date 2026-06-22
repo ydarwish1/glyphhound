@@ -1,14 +1,14 @@
-"""Phase 15 — wider-corpus false-positive audit.
+"""Phase 15 -- wider-corpus false-positive audit.
 
 The Phase-7 corpus is 120 SHA-pinned GGUF templates with a MEASURED 0.00% gating FP.
 Phase 12 then added the common names ``open``/``globals``/``locals``/``vars`` (and more) to
-the catalog; they were re-measured 0/120 on that corpus, but the runbook wants them audited
-on a *wider, independent* benign set before we lock the claim (the project history §3 Phase 15, §7).
+the catalog; they were re-measured 0/120 on that corpus, but we want them audited
+on a *wider, independent* benign set before we lock the claim.
 
 This script does exactly that, ONCE, over the network (range/metadata reads only, never
-weights — the project conventions): it crawls the Hub's most-downloaded text-generation models and
+weights): it crawls the Hub's most-downloaded text-generation models and
 reads each one's CANONICAL chat template via the Phase-14 source
-(``read_hf_source_template`` — ``tokenizer_config.json`` / ``chat_template.jinja`` /
+(``read_hf_source_template`` -- ``tokenizer_config.json`` / ``chat_template.jinja`` /
 safetensors ``__metadata__``, all small metadata files). It dedupes by template sha256 AND
 excludes every template already in the pinned ``corpus/`` (so the audited set is genuinely
 NEW, not a re-measurement of the 120), scans each with the real CI path
@@ -16,7 +16,7 @@ NEW, not a re-measurement of the 120), scans each with the real CI path
 ``study/wider_fp_audit.json``.
 
 ``scripts/verify_phase15.py`` reads that vendored JSON OFFLINE and asserts the audited sample
-is wider than the corpus and stayed 0 gating FP — the same build (network, non-deterministic)
+is wider than the corpus and stayed 0 gating FP -- the same build (network, non-deterministic)
 vs verify (offline, deterministic over the vendored result) split as
 ``build_fp_corpus.py`` / ``verify_phase7.py``.
 
@@ -124,7 +124,7 @@ def _crawl_candidates() -> list[str]:
 
 
 def _resolve_sha(repo: str) -> str:
-    """Pin the repo by its current commit SHA (determinism, Rule 7)."""
+    """Pin the repo by its current commit SHA (for determinism)."""
     info = _get_json(f"{_API}/{repo}")
     return info["sha"]
 
@@ -193,7 +193,7 @@ def main() -> int:
         finally:
             time.sleep(_POLITE)
 
-        # Scan EVERY template (default + named variants) — a malicious named variant cannot hide.
+        # Scan EVERY template (default + named variants) -- a malicious named variant cannot hide.
         for ct in raw.templates:
             text = ct.text
             digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
@@ -254,7 +254,7 @@ def main() -> int:
         "audited_name_flagged_counts": name_flagged,
         "skips": skips,
         "source": "Phase-14 HF canonical source (tokenizer_config.json / chat_template.jinja "
-                  "/ safetensors __metadata__); metadata reads only, no weights (Rule 6)",
+                  "/ safetensors __metadata__); metadata reads only, no weights",
         "method": "make_report(analyze_template(text)).exit_code != 0 == gating FP (the real "
                   "CI gate); deduped by template sha256 and excluded from the pinned corpus",
     }
@@ -272,14 +272,14 @@ def main() -> int:
     print(f">>> WIDER-SAMPLE GATING FALSE-POSITIVE RATE: {rate:.2%}  ({len(gating_fp)}/{n}) <<<")
     print(f"audited-name flagged counts: {name_flagged}")
     if gating_fp:
-        print("\n[gating FP detail — investigate before any 0-FP claim]:")
+        print("\n[gating FP detail -- investigate before any 0-FP claim]:")
         for r in gating_fp:
             print(f"  {r['model']} [{r['template_name']}]: rules {r['rule_ids']} "
                   f"evidence {r['evidence']}")
     print(f"\nWrote {OUT_PATH}")
     print("=" * 78)
     # Non-zero only if we failed to gather a wider sample; the FP rate is the deliverable,
-    # reported either way (Rule 9) — a gating hit is investigated, not silently failed here.
+    # reported either way -- a gating hit is investigated, not silently failed here.
     return 0 if n >= 120 else 1
 
 
@@ -312,7 +312,7 @@ def rescan() -> int:
     Reads the per-template provenance from ``study/wider_fp_audit.json`` (model + pinned
     revision + template sha256), re-fetches each pinned template, re-scans it, and rewrites the
     JSON. Used after an analyzer change (e.g. the Phase-15 subscript-key FP narrowing) so the
-    vendored result reflects the final analyzer on the same pinned sample — deterministic given
+    vendored result reflects the final analyzer on the same pinned sample -- deterministic given
     the pins, and far faster than a fresh crawl.
     """
     if not os.path.exists(OUT_PATH):

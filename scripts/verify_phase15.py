@@ -1,12 +1,12 @@
 """Phase 15 verification -- detection hardening (catalog audit + wider FP audit + benchmark).
 
-Offline and deterministic (the project conventions): it analyzes on-disk fixtures, the vendored
+Offline and deterministic: it analyzes on-disk fixtures, the vendored
 benign corpus, the vendored wider-FP-audit result, and the benchmark payloads -- no network,
 no weights, and it never *renders* a template (only parses + walks the AST). The network-only
 audit BUILD step lives separately in ``scripts/wider_fp_audit.py`` (same build-vs-verify split
 as ``build_fp_corpus.py`` / ``verify_phase7.py``).
 
-Checks (the project history §3 Phase 15 runbook / Phase Tracker row 15):
+Checks:
   (a) CATALOG DECISION: the candidate gadget dunders investigated this phase
       (__format__ / __getitem__ / __dir__) were NOT added -- they enable no reachable chain
       the existing 23-dunder catalog misses (their standalone form is not a real first-climb
@@ -17,7 +17,7 @@ Checks (the project history §3 Phase 15 runbook / Phase Tracker row 15):
   (b) WIDER FP AUDIT: the vendored ``study/wider_fp_audit.json`` audited a sample WIDER than
       the 120-corpus (distinct NEW templates not in the corpus) and measured 0 gating FP, with
       the Phase-12 common names (open/globals/locals/vars) never the cause of a gating FP.
-  (c) RULE 9: the (unchanged) catalog keeps the real benign corpus at 0.00% (0/120) gating AND
+  (c) the (unchanged) catalog keeps the real benign corpus at 0.00% (0/120) gating AND
       0 presence, and the 11 benign fixtures clean -- re-measured here.
   (d) BENCHMARK (GlyphHound side, offline): every malicious benchmark payload still gates and
       every benign control stays clean under the current analyzer (the full GH-vs-ModelAudit
@@ -49,7 +49,7 @@ AUDIT_PATH = os.path.join(ROOT, "study", "wider_fp_audit.json")
 BENCH_DIR = os.path.join(ROOT, "benchmark", "payloads")
 BENCH_MANIFEST = os.path.join(BENCH_DIR, "MANIFEST.json")
 
-# Investigated this phase; NOT added (see check (a) and the project history Decision Log). Each maps a
+# Investigated this phase; NOT added (see check (a)). Each maps a
 # realistic chain that USES the candidate (still caught via a cataloged dunder) to its
 # standalone form (not a real first-climb gadget -> not reachable -> nothing to gain by adding).
 CANDIDATE_DUNDERS = {
@@ -101,7 +101,7 @@ def verify_catalog_decision() -> bool:
         print(f"[{'OK' if good else 'FAIL'}] {dunder:14s} absent={absent}  "
               f"realistic-chain-reachable={caught}  standalone-reachable={not standalone_inert}")
     print(f"[{'OK' if ok else 'FAIL'}] no detection lost by not cataloging the candidates; "
-          f"no FP surface added (Rule 8/10).")
+          f"no FP surface added.")
     return ok
 
 
@@ -160,7 +160,7 @@ def _gating_presence(directory: str) -> tuple[int, int, int]:
 
 def verify_corpus_clean() -> bool:
     print("\n" + "=" * 78)
-    print("Phase 15 (c) -- Rule 9: catalog keeps the 120-corpus + 11 fixtures FP-clean")
+    print("Phase 15 (c) -- catalog keeps the 120-corpus + 11 fixtures FP-clean")
     print("=" * 78)
     n_corpus, present_corpus, gating_corpus = _gating_presence(CORPUS_DIR)
     n_benign, present_benign, gating_benign = _gating_presence(BENIGN_DIR)

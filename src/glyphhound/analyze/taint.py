@@ -7,7 +7,7 @@ attribute / subscript / ``|attr`` chain that climbs from a real **base object** 
 ``Name``, including the dual-use Jinja gadgets ``cycler``/``joiner``/``namespace``/
 ``lipsum``/``self``, or a literal like ``()``) **through** a ``DANGEROUS_DUNDER``, onto
 a ``CODE_EXEC_NAME`` reached by access or call, or as a ``getattr``/``setattr``
-reflection call (ARCHITECTURE.md §3, PRD §7.3).
+reflection call (ARCHITECTURE.md §3).
 
 This is the false-positive killer: a template that merely *names* a variable ``class``
 (a ``Name``, not a ``__class__`` access) or uses the role string ``'system'`` (a
@@ -15,7 +15,7 @@ This is the false-positive killer: a template that merely *names* a variable ``c
 
 The layer never changes the Phase-2 finding set: :func:`compute_reachable` returns the
 identities of the sink nodes that are reachable, and the sink walk annotates each
-:class:`~.models.Finding` from it. So the Rule-9 0/11 false-positive gate is preserved
+:class:`~.models.Finding` from it. So the 0/11 false-positive gate is preserved
 by construction — the benign corpus yields zero findings, hence zero reachable findings.
 
 Scope boundary: :func:`_const_str` matches only ``Const`` — a computed key such as
@@ -40,7 +40,7 @@ def compute_reachable(ast: nodes.Node) -> set[int]:
     chain is walked once from its outermost node down to its base, and inner spine nodes
     are then skipped. ``id()`` is used only for in-pass membership — the resulting
     per-finding booleans depend solely on AST structure, so the analysis is
-    deterministic (Rule 7).
+    deterministic.
     """
     reachable: set[int] = set()
     seen: set[int] = set()

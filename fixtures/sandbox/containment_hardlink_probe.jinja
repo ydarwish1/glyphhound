@@ -13,7 +13,7 @@
   out-of-scratch inode is never aliased. The containment test asserts the attempt was
   blocked AND no out-of-scratch side effect occurred.
 
-  HARMLESS (the project conventions — MARKER only): no link is created, no file is written, no
-  weights are loaded (Rule 6).
+  HARMLESS (MARKER only): no link is created, no file is written, no
+  weights are loaded.
 -#}
 {{ cycler.__init__.__globals__.__builtins__['__import__']('os').link(outside, sentinel) }}

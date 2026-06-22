@@ -1,8 +1,8 @@
-"""Phase 0 verification — extract chat templates from real models, no weights.
+"""Phase 0 verification -- extract chat templates from real models, no weights.
 
 Phase 0a (GGUF): range-fetch the template from several real Hugging Face GGUFs,
-pinned by commit SHA for determinism (the project conventions), and assert the no-weights
-invariant bytes_fetched << total_size (Rule 6).
+pinned by commit SHA for determinism, and assert the no-weights
+invariant bytes_fetched << total_size.
 
 Phase 0b (Ollama): if an Ollama store with pulled models is present, extract their
 templates too; otherwise report it as deferred (the offline synthetic test already
@@ -27,7 +27,7 @@ from glyphhound.acquire import (  # noqa: E402
     read_ollama_template,
 )
 
-# (repo, filename, pinned commit SHA) — three model families, diverse templates.
+# (repo, filename, pinned commit SHA) -- three model families, diverse templates.
 GGUF_MODELS = [
     ("Qwen/Qwen2.5-0.5B-Instruct-GGUF",
      "qwen2.5-0.5b-instruct-q4_k_m.gguf",
@@ -53,7 +53,7 @@ def _human(n: int) -> str:
 
 def verify_gguf() -> bool:
     print("=" * 78)
-    print("Phase 0a — GGUF template extraction (range-fetch, no weights)")
+    print("Phase 0a -- GGUF template extraction (range-fetch, no weights)")
     print("=" * 78)
     all_ok = True
     for repo, filename, sha in GGUF_MODELS:
@@ -78,13 +78,13 @@ def verify_gguf() -> bool:
 
 def verify_ollama() -> None:
     print("\n" + "=" * 78)
-    print("Phase 0b — Ollama template extraction (local blob, no weights)")
+    print("Phase 0b -- Ollama template extraction (local blob, no weights)")
     print("=" * 78)
     models_dir = default_models_dir()
     manifests_root = os.path.join(models_dir, "manifests")
     if not os.path.isdir(manifests_root):
         print(f"\n[DEFERRED] No Ollama store at {models_dir}.")
-        print("           Ollama not installed yet — real-model check deferred.")
+        print("           Ollama not installed yet -- real-model check deferred.")
         print("           The offline synthetic-store test (tests/test_ollama_acquire.py)")
         print("           already verifies the reader against the documented format.")
         return

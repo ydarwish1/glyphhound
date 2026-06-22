@@ -80,11 +80,11 @@ runs:
         GH_SARIF: ${{ inputs.sarif-file }}
       run: |
         set +e
-        FILE_ARG=""
-        if [ -n "$GH_FILE" ]; then FILE_ARG="--file $GH_FILE"; fi
+        FILE_ARG=()
+        if [ -n "$GH_FILE" ]; then FILE_ARG=(--file "$GH_FILE"); fi
         glyphhound scan "$GH_REF" \
           --source "$GH_SOURCE" \
-          $FILE_ARG \
+          "${FILE_ARG[@]}" \
           --revision "$GH_REVISION" \
           --threshold "$GH_THRESHOLD" \
           --format sarif > "$GH_SARIF"

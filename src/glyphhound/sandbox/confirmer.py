@@ -8,8 +8,8 @@ callers opt in (``scan_template_string(..., confirm=True)`` / the CLI ``--confir
 A confirmed result is a deterministic function of an OBSERVABLE side effect — a sentinel
 file appearing in a temp scratch dir — not of timing: render errors, blocked syscalls and
 timeouts all map to ``confirmed=False`` (never an exception, never a wrong True). So the
-subprocess/timeout nondeterminism is isolated from the static pipeline (the project conventions),
-which keeps producing byte-identical reports with the sandbox off.
+subprocess/timeout nondeterminism is isolated from the static pipeline, which keeps
+producing byte-identical reports with the sandbox off.
 """
 
 from __future__ import annotations
@@ -58,11 +58,18 @@ def is_supported() -> bool:
 def _child_env() -> dict:
     """A trimmed environment for the child: enough to start Python and import glyphhound,
     without inheriting unrelated process environment into the rendered template."""
-    src_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))  # .../src
+    # Locate the import root that holds the `glyphhound` package, robustly for both an
+    # editable checkout (.../src) and an installed wheel (.../site-packages).
+    import importlib.util
+    spec = importlib.util.find_spec("glyphhound")
+    if spec is not None and spec.origin:
+        import_root = os.path.dirname(os.path.dirname(spec.origin))
+    else:  # fallback for unusual layouts
+        import_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
     keep = ("SYSTEMROOT", "WINDIR", "PATH", "PATHEXT", "TEMP", "TMP",
             "COMSPEC", "NUMBER_OF_PROCESSORS", "PROCESSOR_ARCHITECTURE", "LD_LIBRARY_PATH")
     env = {k: os.environ[k] for k in keep if k in os.environ}
-    env["PYTHONPATH"] = src_root
+    env["PYTHONPATH"] = import_root
     env["PYTHONIOENCODING"] = "utf-8"
     env["PYTHONDONTWRITEBYTECODE"] = "1"
     return env

@@ -1,16 +1,16 @@
-"""Phase 17 — score GlyphHound over the public labeled yardstick (benchmark + corpus).
+"""Phase 17 -- score GlyphHound over the public labeled yardstick (benchmark + corpus).
 
 ModelAudit-free, offline, deterministic. Runs GlyphHound's real CI gate over:
 
 * the **labeled MARKER payloads** in ``benchmark/payloads/`` (labels in ``MANIFEST.json``:
-  ``malicious`` true/false) — obfuscated CVE-2024-34359-class gadgets + benign controls; and
+  ``malicious`` true/false) -- obfuscated CVE-2024-34359-class gadgets + benign controls; and
 * the **labeled-benign corpus** in ``corpus/templates/`` (120 real HF templates, provenance in
   ``corpus/PROVENANCE.json``).
 
-…and prints the catch rate (malicious flagged) + false-positive rate (benign flagged). Anyone
+...and prints the catch rate (malicious flagged) + false-positive rate (benign flagged). Anyone
 can run this to reproduce GlyphHound's numbers, or adapt the same loop to score *their own*
-scanner against the dataset — without installing the incumbent. Parse-only, never renders
-(Rule 6); the payloads are harmless MARKER simulations (Rule 4).
+scanner against the dataset -- without installing the incumbent. Parse-only, never renders;
+the payloads are harmless MARKER simulations.
 
     .venv/Scripts/python.exe scripts/score_yardstick.py   # exit 0 iff all malicious caught, 0 FP
 """
@@ -35,7 +35,7 @@ CORPUS_DIR = os.path.join(ROOT, "corpus", "templates")
 
 
 def gates(text: str) -> bool:
-    """GlyphHound's real CI verdict: does this template gate (≥1 reachable finding ≥ high)?"""
+    """GlyphHound's real CI verdict: does this template gate (>=1 reachable finding >= high)?"""
     return make_report(analyze_template(text)).exit_code != 0
 
 

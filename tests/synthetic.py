@@ -2,7 +2,7 @@
 
 Nothing here touches the network or a real model. We synthesize a minimal GGUF
 byte string and a synthetic Ollama model store so the acquirer can be verified
-fully offline (the project conventions — determinism).
+fully offline and deterministically.
 """
 
 from __future__ import annotations

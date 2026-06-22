@@ -1,6 +1,6 @@
 """Phase 16 verification -- close the confirmed obfuscation bypasses.
 
-Offline and deterministic (the project conventions): it analyzes on-disk fixtures and the vendored
+Offline and deterministic: it analyzes on-disk fixtures and the vendored
 benign corpus -- no network, no weights, and it never *renders* a template (only parses,
 folds, and walks the AST), so reading the malicious fixtures cannot execute them. The fold is
 a static AST rewrite over string literals; no string is ever evaluated.
@@ -13,15 +13,15 @@ lacked the case/transform filters) and negative/reverse slices (``''['__ssalc__'
 to a whitelist of pure string transforms and teaches the slice/index bound to unwrap a
 ``Neg(Const(int))`` -- so both fold to their constant value before the unchanged walk.
 
-Checks (the design docs row 16 / the project history Phase 16 tracker -- "the bypass MARKER fixtures
-(``''['__CLASS__'|lower]``, ``''['__ssalc__'[::-1]]``) now GATE; 120-corpus FP STILL 0/120"):
+Checks (the bypass MARKER fixtures
+(``''['__CLASS__'|lower]``, ``''['__ssalc__'[::-1]]``) now GATE; 120-corpus FP STILL 0/120):
   (a) The two Phase-16 MARKER fixtures yield ZERO findings WITHOUT the fold (raw walker) and a
       reachable GH-S001 + GH-S002 chain WITH the full pipeline -- and they gate CI.
   (b) The two reported minimal bypass forms now GATE, and the rest of the transform family
       (reverse-via-filter, swapcase, whitespace trim, chained transforms) folds the same way.
   (c) The permanent static ceiling is documented, not "fixed by rendering": a fully dynamic /
       runtime / loop-built name stays unflagged (the gated sandbox `--confirm` is the backstop).
-  (d) Rule 9: the real benign corpus stays 0.00% (0/120, presence AND gating) and the 11
+  (d) the real benign corpus stays 0.00% (0/120, presence AND gating) and the 11
       benign fixtures clean, plus benign case-fold/reverse near-misses -- re-measured after the
       analyzer change. (The wider 241-template audit is verify_phase15's vendored result,
       re-measured 0/241 against this analyzer via `wider_fp_audit.py --rescan`.)
@@ -58,7 +58,7 @@ BYPASS_FORMS = [
     "{{ ''['__class__'|upper|lower] }}", # chained transforms fold bottom-up
 ]
 
-# The PERMANENT static ceiling (Rule 4/6 -- never render to "resolve" these). DOCUMENTED, not
+# The PERMANENT static ceiling (never render to "resolve" these). DOCUMENTED, not
 # fixed: the names are computed only at render, so static analysis cannot see them; the gated
 # sandbox confirmer (`--confirm`) is the backstop.
 DYNAMIC_LIMIT = [
@@ -66,7 +66,7 @@ DYNAMIC_LIMIT = [
     "{% for ch in '__class__' %}{{ ''[ch] }}{% endfor %}",
 ]
 
-# Benign case-fold / reverse near-misses that MUST stay clean (Rule 9).
+# Benign case-fold / reverse near-misses that MUST stay clean.
 BENIGN_PROBES = [
     "{{ 'Hello'|lower }}",
     "{{ message['role']|lower }}: {{ message['content'] }}",
@@ -151,7 +151,7 @@ def _gating_fp(directory: str) -> tuple[int, int, int]:
 
 def verify_no_false_positives() -> bool:
     print("\n" + "=" * 78)
-    print("Phase 16 (d) -- Rule 9: corpus + benign fixtures + transform near-misses stay CLEAN")
+    print("Phase 16 (d) -- corpus + benign fixtures + transform near-misses stay CLEAN")
     print("=" * 78)
     ok = True
     for probe in BENIGN_PROBES:
@@ -168,7 +168,7 @@ def verify_no_false_positives() -> bool:
     corpus_ok = (n_corpus >= 100 and gating_corpus == 0 and present_corpus == 0
                  and n_benign >= 10 and gating_benign == 0 and present_benign == 0)
     ok = ok and corpus_ok
-    print(f"[{'OK' if ok else 'FAIL'}] corpus FP 0.00% gating AND 0 presence; near-misses clean (Rule 9).")
+    print(f"[{'OK' if ok else 'FAIL'}] corpus FP 0.00% gating AND 0 presence; near-misses clean.")
     return ok
 
 

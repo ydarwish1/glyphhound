@@ -2,9 +2,9 @@
 
 No network: ``_urlopen`` (the urllib indirection) and ``_sleep`` are stubbed so the auth
 header and the deterministic retry/backoff are exercised without real requests or real
-waiting. The acquirer still only ever requests metadata and never reads weights (Rule 6) —
+waiting. The acquirer still only ever requests metadata and never reads weights —
 this adds auth + rate-limit handling, it does not change *what* is fetched. Backoff is a
-fixed exponential schedule with no random jitter (Rule 7).
+fixed exponential schedule with no random jitter.
 """
 
 from __future__ import annotations
@@ -123,7 +123,7 @@ def test_honors_numeric_retry_after(monkeypatch, no_sleep):
 
 
 def test_backoff_is_deterministic_exponential(monkeypatch, no_sleep):
-    # Always 429, no Retry-After -> a fixed exponential schedule (no random jitter, Rule 7).
+    # Always 429, no Retry-After -> a fixed exponential schedule (no random jitter).
     monkeypatch.delenv("HF_TOKEN", raising=False)
     _script(monkeypatch, [_http_error(429)])
     with pytest.raises(AcquireError):

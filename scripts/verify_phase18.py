@@ -1,30 +1,30 @@
-"""Phase 18 verification — Linux sandbox hardening + containment proof.
+"""Phase 18 verification -- Linux sandbox hardening + containment proof.
 
 Phase 6 proved a CROSS-PLATFORM audit-hook contains a hostile render (and still PASSES on
 Linux). Phase 18 adds the Linux-only kernel/OS backstops in :mod:`glyphhound.sandbox.harden`
 (applied in the child under the audit hook) and OS-enforced symlink resolution in the
-out-of-scratch write check, then PROVES them — mirroring verify_phase6 on Linux:
+out-of-scratch write check, then PROVES them -- mirroring verify_phase6 on Linux:
 
   (a) the exploitable MARKER fixture still CONFIRMS (confirmed=True) WITH hardening active in
-      the child — hardening does not break a legitimate render — and the child applies the
+      the child -- hardening does not break a legitimate render -- and the child applies the
       full hardening set (rlimits + privilege-drop + seccomp);
   (b) CONTAINMENT is proven four ways:
         * out-of-scratch write BLOCKED (audit hook),
         * outbound network connect BLOCKED (audit hook),
         * a symlink planted INSIDE scratch that points OUTSIDE is BLOCKED (Phase-18 realpath
-          fix — the string-only check used to ALLOW it),
+          fix -- the string-only check used to ALLOW it),
         * seccomp KILLS a real syscall at the KERNEL level, independent of the audit hook
           (a no-filter child execve's freely; a seccomp child is killed by SIGSYS), and
           rlimits are enforced (a tiny RLIMIT_CPU child is killed by SIGXCPU);
-  (c) no false confirmations (Rule 9): benign template + real benign corpus + a real
+  (c) no false confirmations: benign template + real benign corpus + a real
       os.system payload all yield confirmed != True;
   (d) with the sandbox OFF the static pipeline + reports are unchanged (confirmed=None,
       byte-identical), and confirmation stays annotation-only.
 
-Run (Linux):  ~/gh-venv/bin/python scripts/verify_phase18.py
+Run (Linux):  .venv/bin/python scripts/verify_phase18.py
 Exit code is non-zero if any check fails. On non-Linux it prints SKIP and exits 0 (there is
 no Linux hardening to prove there; the cross-platform layer is covered by verify_phase6).
-MARKER payloads only (Rule 4); no model weights are ever loaded (Rule 6).
+MARKER payloads only; no model weights are ever loaded.
 """
 
 from __future__ import annotations
@@ -79,7 +79,7 @@ def _run_py(snippet: str, timeout: float = 20.0) -> subprocess.CompletedProcess:
 
 def verify_marker_with_hardening() -> bool:
     print("=" * 78)
-    print("Phase 18 (a) — the MARKER fixture still CONFIRMS with Linux hardening active")
+    print("Phase 18 (a) -- the MARKER fixture still CONFIRMS with Linux hardening active")
     print("=" * 78)
     result = confirm_template(_read(MARKER_FIXTURE))
     separate = result.pid is not None and result.pid != os.getpid()
@@ -113,7 +113,7 @@ def verify_marker_with_hardening() -> bool:
 
 def verify_containment() -> bool:
     print("\n" + "=" * 78)
-    print("Phase 18 (b) — CONTAINMENT proven (audit hook + symlink + seccomp/rlimit)")
+    print("Phase 18 (b) -- CONTAINMENT proven (audit hook + symlink + seccomp/rlimit)")
     print("=" * 78)
 
     fs = confirm_template(_read(FS_PROBE_FIXTURE))
@@ -198,7 +198,7 @@ def _check_rlimits_enforced() -> bool:
         return False
     caps_ok = ("RLIMIT_FSIZE" in rb.get("applied", [])
                and rb.get("fsize") == 16 * 1024 * 1024 and rb.get("core") == 0)
-    # Behavioural: a 1-second CPU limit kills a busy loop — SIGXCPU at the soft limit, or
+    # Behavioural: a 1-second CPU limit kills a busy loop -- SIGXCPU at the soft limit, or
     # SIGKILL if it races to the hard limit first. Either proves the cap is enforced.
     cpu = _run_py("import resource\n"
                   "resource.setrlimit(resource.RLIMIT_CPU, (1, 2))\n"
@@ -209,11 +209,11 @@ def _check_rlimits_enforced() -> bool:
     return caps_ok and cpu_ok
 
 
-# --- (c) no false confirmations on benign + real attacker payloads (Rule 9) ---------------
+# --- (c) no false confirmations on benign + real attacker payloads ------------------------
 
 def verify_no_false_confirmations() -> bool:
     print("\n" + "=" * 78)
-    print("Phase 18 (c) — no false confirmations (benign + corpus + attacker payload)")
+    print("Phase 18 (c) -- no false confirmations (benign + corpus + attacker payload)")
     print("=" * 78)
     simple = confirm_template(BENIGN)
     simple_ok = simple.confirmed is not True
@@ -230,7 +230,7 @@ def verify_no_false_confirmations() -> bool:
     print(f"  false confirmations on the real benign corpus: {false_confirms}/{len(files)}")
 
     ok = simple_ok and attacker_ok and false_confirms == 0 and len(files) >= 10
-    print(f"[{'OK' if ok else 'FAIL'}] nothing benign is confirmed (Rule 9).")
+    print(f"[{'OK' if ok else 'FAIL'}] nothing benign is confirmed.")
     return ok
 
 
@@ -238,7 +238,7 @@ def verify_no_false_confirmations() -> bool:
 
 def verify_sandbox_off_unchanged() -> bool:
     print("\n" + "=" * 78)
-    print("Phase 18 (d) — sandbox OFF leaves the static pipeline + reports unchanged")
+    print("Phase 18 (d) -- sandbox OFF leaves the static pipeline + reports unchanged")
     print("=" * 78)
     text = _read(MARKER_FIXTURE)
     off = scan_template_string(text)
@@ -264,7 +264,7 @@ def main() -> int:
               f"{sys.platform}. The cross-platform layer is covered by verify_phase6).")
         return 0
     if not is_supported():
-        print("Phase 18: FAIL — the sandbox is not supported here (no audit hooks?).")
+        print("Phase 18: FAIL -- the sandbox is not supported here (no audit hooks?).")
         return 1
     a_ok = verify_marker_with_hardening()
     b_ok = verify_containment()

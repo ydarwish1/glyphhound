@@ -1,5 +1,5 @@
 """Offline, deterministic tests for the Phase-16 de-obfuscation: close the confirmed
-case-fold and reverse-slice bypasses (Rule 8).
+case-fold and reverse-slice bypasses.
 
 A live read-only test (2026-06-22) confirmed two obfuscations slipped past the analyzer:
 case-fold filters (``''['__CLASS__'|lower]``) and negative/reverse slices
@@ -8,9 +8,9 @@ pure, side-effect-free string transforms (``lower``/``upper``/``title``/``capita
 ``swapcase``/``trim``/``strip``/``reverse``) and teaches the slice/index bound to accept a
 ``Neg(Const(int))``, so each obfuscated identifier folds to its constant value BEFORE the
 unchanged identifier-only walk. Each obfuscated form must fold to a *reachable* dunder sink,
-while the same transforms over benign content must stay clean (the false-positive guard,
-Rule 9). Folding is a static AST rewrite over string literals only — nothing is evaluated
-dynamically or rendered (Rule 4/Rule 6).
+while the same transforms over benign content must stay clean (the false-positive guard).
+Folding is a static AST rewrite over string literals only — nothing is evaluated
+dynamically or rendered.
 """
 
 from __future__ import annotations
@@ -121,7 +121,7 @@ def test_zero_step_slice_does_not_crash_or_fold():
 
 
 # --------------------------------------------------------------------------- #
-# False-positive guard (Rule 9): benign transforms over real content stay clean.
+# False-positive guard: benign transforms over real content stay clean.
 # --------------------------------------------------------------------------- #
 @pytest.mark.parametrize("benign", [
     "{{ 'Hello'|lower }}",                         # a folded Const is never inspected
@@ -155,7 +155,7 @@ def test_fully_dynamic_names_remain_a_documented_limit(dynamic):
 
 
 # --------------------------------------------------------------------------- #
-# Determinism + non-mutation (Rule 7): normalize rewrites a copy, twice == once.
+# Determinism + non-mutation: normalize rewrites a copy, twice == once.
 # --------------------------------------------------------------------------- #
 def test_normalize_does_not_mutate_input_and_is_deterministic():
     src = "{{ ''['__CLASS__'|lower] }}"

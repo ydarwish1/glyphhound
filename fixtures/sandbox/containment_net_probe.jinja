@@ -10,7 +10,7 @@
   an RFC 5737 TEST-NET address that is unroutable by design — defence in depth). The
   containment test asserts the connect attempt was blocked.
 
-  HARMLESS (the project conventions — MARKER only): no real host is contacted, no data is sent,
-  no weights are loaded (Rule 6).
+  HARMLESS (MARKER only): no real host is contacted, no data is sent,
+  no weights are loaded.
 -#}
 {{ cycler.__init__.__globals__.__builtins__['__import__']('socket').socket().connect((probe_host, probe_port)) }}

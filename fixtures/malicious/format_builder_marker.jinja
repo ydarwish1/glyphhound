@@ -7,7 +7,7 @@
   unchanged Const-only sink walk fires: cycler -> __init__ -> __globals__ -> __builtins__
   -> __import__ -> system.
 
-  HARMLESS (the project conventions — MARKER only): the analyzer only PARSES this and walks the
+  HARMLESS (MARKER only): the analyzer only PARSES this and walks the
   AST; it never renders it. The "payload" is the sentinel GLYPHHOUND_PHASE10_FORMAT_MARKER,
   not a real command. WITHOUT folding this yields 0 findings; WITH folding it is a reachable
   GH-S001 (+ GH-S002) chain.

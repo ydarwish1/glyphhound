@@ -1,17 +1,17 @@
 """Build the benign real-template corpus for Phase 1 (parser) verification.
 
 Extracts the chat template from a list of real Hugging Face GGUF models using the
-Stage-1 acquirer (range-fetch only — never the weights, the project conventions), pins
-each by the repo's current commit SHA, dedupes by template sha256, and vendors the
-unique templates into ``fixtures/benign/`` with a ``PROVENANCE.json`` manifest.
+Stage-1 acquirer (range-fetch only -- never the weights), pins each by the repo's
+current commit SHA, dedupes by template sha256, and vendors the unique templates
+into ``fixtures/benign/`` with a ``PROVENANCE.json`` manifest.
 
 Run once (needs network) to (re)generate the corpus:
     .venv/Scripts/python.exe scripts/build_corpus.py
 
 The vendored files are what the offline Phase-1 gate (tests + verify_phase1.py)
 parses, so the gate stays deterministic and reproducible from a clean checkout
-without re-hitting the network (Rule 7). These are benign, public templates — safe
-to commit (Rule 4).
+without re-hitting the network. These are benign, public templates -- safe
+to commit.
 """
 
 from __future__ import annotations
@@ -34,7 +34,7 @@ _TARGET_UNIQUE = 12  # collect at least this many distinct templates (check need
 
 # Diverse model families so we get distinct templates (Qwen / Llama-3.x / SmolLM2 /
 # Phi / Gemma / Mistral / TinyLlama / StableLM-Zephyr / Hermes ...). Weights are never
-# read — only the metadata header — so large repos are fine.
+# read -- only the metadata header -- so large repos are fine.
 CANDIDATE_REPOS = [
     "Qwen/Qwen2.5-0.5B-Instruct-GGUF",
     "bartowski/Llama-3.2-1B-Instruct-GGUF",

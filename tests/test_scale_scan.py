@@ -2,8 +2,8 @@
 
 No network: the pure summary/obfuscation classification, the resume-skip helper, and the
 per-repo loop (with ``read_hf_source_template`` monkeypatched) are exercised on synthetic
-templates. Crucially, these assert the SAFETY contract the owner asked for: a summary record
-NEVER contains the raw template text (Rule 4) — only its sha256, finding counts, and the
+templates. Crucially, these assert the SAFETY contract: a summary record
+NEVER contains the raw template text — only its sha256, finding counts, and the
 flagged sink identifiers. MARKER-only; the analyzer parses + walks, never renders.
 """
 
@@ -87,7 +87,7 @@ def test_scan_repo_records_unparseable_template_as_coverage_gap(monkeypatch):
 
 
 def test_get_json_reads_through_the_metadata_cap(monkeypatch):
-    """Rule 6 (review C1): the Hub listing read must go through _read_capped at the metadata
+    """The Hub listing read must go through _read_capped at the metadata
     cap, never an uncapped json.load that a hostile host could flood."""
     class _Resp:
         headers = {"Link": ""}

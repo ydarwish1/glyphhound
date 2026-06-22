@@ -5,7 +5,7 @@ tensor information and finally the tensor data — the multi-gigabyte weights. T
 ``tokenizer.chat_template`` we care about lives in that header. We read the file
 *sequentially from offset 0* and stop the instant we have the template, so for a
 remote file we issue HTTP range requests and only ever download the small prefix
-that holds the metadata, never the weights (the project conventions).
+that holds the metadata, never the weights.
 
 Format reference: https://github.com/ggml-org/ggml/blob/master/docs/gguf.md
 """
@@ -55,7 +55,7 @@ def _read_capped(resp, limit: int) -> bytes:
 
     A server cannot be trusted to honor our Range request: a malicious 206 could
     stream the entire weights file. Capping the read at the number of bytes we
-    asked for keeps the no-weights guarantee even against a hostile host (Rule 6).
+    asked for keeps the no-weights guarantee even against a hostile host.
     Handles partial reads (HTTP may return fewer bytes per ``read`` call).
     """
     buf = bytearray()
@@ -124,7 +124,7 @@ class _HttpRangeWindow(_ByteWindow):
             if resp.status != 206:
                 # HTTP 200 means the server ignored Range and is about to stream the
                 # entire file. Refuse before reading the body so we never download the
-                # weights (the project conventions).
+                # weights.
                 raise RangeUnsupportedError(
                     f"server returned HTTP {resp.status} (not 206 Partial Content) for a range "
                     f"request to {self.url}; refusing to download the full file"
@@ -252,7 +252,7 @@ def _extract_from_window(window: _ByteWindow, source_ref: str) -> RawTemplate:
     # anywhere, including after the default, and a malicious named template must not
     # be skipped. This reads more of the header than the old early-break path, but
     # still only the metadata prefix (bounded by _MAX_METADATA_BYTES), never the
-    # tensor data / weights (Rule 6) — the loop stops at the end of the KV block.
+    # tensor data / weights — the loop stops at the end of the KV block.
     for _ in range(kv_count):
         key = cur.gguf_string().decode("utf-8", "replace")
         vtype = cur.u32()
@@ -295,7 +295,7 @@ def read_gguf_template(ref: str, *, filename: str | None = None, revision: str =
       * a direct ``http(s)`` URL to a ``.gguf`` file, or
       * a Hugging Face repo id (e.g. ``"Qwen/Qwen2.5-0.5B-Instruct-GGUF"``), in
         which case ``filename`` is required and ``revision`` should be pinned to a
-        commit SHA for determinism (the project conventions).
+        commit SHA for determinism.
     """
     if ref.startswith(("http://", "https://")):
         return _extract_from_window(_HttpRangeWindow(ref), ref)

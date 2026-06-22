@@ -1,10 +1,10 @@
-"""Phase 1 verification — parse real chat templates into Jinja2 ASTs.
+"""Phase 1 verification -- parse real chat templates into Jinja2 ASTs.
 
-Offline and deterministic (the project conventions): it parses the vendored benign
+Offline and deterministic: it parses the vendored benign
 corpus (real templates extracted earlier by ``scripts/build_corpus.py``, pinned by
-commit SHA in ``fixtures/benign/PROVENANCE.json``) — no network, no weights.
+commit SHA in ``fixtures/benign/PROVENANCE.json``) -- no network, no weights.
 
-Checks (the design docs Phase 1):
+Checks:
   1. >=10 real templates parse with no error.
   2. The AST dump of a known template matches the expected golden, exactly.
   3. Parsing is deterministic: same template -> identical dump.
@@ -37,7 +37,7 @@ def _node_count(ast: nodes.Node) -> int:
 
 def verify_corpus() -> bool:
     print("=" * 78)
-    print("Phase 1 — parse real chat templates -> Jinja2 AST (offline corpus)")
+    print("Phase 1 -- parse real chat templates -> Jinja2 AST (offline corpus)")
     print("=" * 78)
     provenance = json.load(open(os.path.join(BENIGN_DIR, "PROVENANCE.json"), encoding="utf-8"))
     parsed = 0
@@ -65,7 +65,7 @@ def verify_corpus() -> bool:
 
 def verify_golden() -> bool:
     print("\n" + "=" * 78)
-    print("Phase 1 — AST dump matches expected golden for a known template")
+    print("Phase 1 -- AST dump matches expected golden for a known template")
     print("=" * 78)
     src = open(os.path.join(GOLDEN_DIR, "known_template.jinja"), encoding="utf-8").read()
     expected = open(os.path.join(GOLDEN_DIR, "known_template.ast.txt"), encoding="utf-8").read()

@@ -16,7 +16,7 @@ actually reached by a dangerous chain — each finding's ``reachable`` flag is s
 :func:`~.taint.compute_reachable`.
 
 The walk is a single deterministic pre-order pass (``find_all`` over the tree), so
-the same template always yields the same findings in the same order (Rule 7).
+the same template always yields the same findings in the same order.
 """
 
 from __future__ import annotations

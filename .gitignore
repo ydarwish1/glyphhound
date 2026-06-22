@@ -8,7 +8,7 @@ dist/
 
 # Virtual envs
 .venv/
-.venv-modelaudit/   # Phase 8: isolated env for the ModelAudit benchmark incumbent (kept out of GlyphHound's locked deps)
+.venv-modelaudit/   # isolated env for the ModelAudit benchmark comparison
 venv/
 env/
 

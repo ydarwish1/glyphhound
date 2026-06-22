@@ -7,7 +7,7 @@ Two entry points:
 * :func:`scan_source` — the Phase-9 headline: resolve a *model reference* (local file /
   ``.gguf`` URL / Hugging Face repo / Ollama name) through the Stage-1 acquirer, scan
   **every** template it carries (default + named), and build one report. The acquirer
-  only fetches the metadata block, so this never downloads the weights (the project conventions).
+  only fetches the metadata block, so this never downloads the weights.
 
 Both paths only ever *parse* a template (the analyzer walks the AST; it never renders),
 so reading a malicious model cannot execute it. The optional, off-by-default ``confirm``
@@ -127,7 +127,7 @@ def _acquire(ref: str, *, source: str, filename: str | None, revision: str) -> R
 
 
 def _detect_source(ref: str) -> str:
-    """Deterministically classify ``ref`` (Phase-9 design; see the project history Open Questions).
+    """Deterministically classify ``ref`` (Phase-9 design).
 
     Order: an http(s) URL is a gguf-url; an existing path is sniffed by magic bytes
     (``GGUF`` -> a GGUF file, else a raw template file); ``owner/name`` is a Hugging Face

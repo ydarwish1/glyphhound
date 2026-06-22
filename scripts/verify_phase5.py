@@ -1,18 +1,18 @@
-"""Phase 5 verification — Stage-5 reporter (human / JSON / SARIF 2.1.0 + CI exit codes).
+"""Phase 5 verification -- Stage-5 reporter (human / JSON / SARIF 2.1.0 + CI exit codes).
 
-Offline and deterministic (the project conventions): it analyzes on-disk fixtures and the
+Offline and deterministic: it analyzes on-disk fixtures and the
 vendored benign corpus, validates SARIF against the vendored official SARIF 2.1.0 schema
 (no network), and never *renders* a template (it only parses + walks the AST, then formats
-the resulting Finding[]) — so reading the malicious fixtures cannot execute them.
+the resulting Finding[]) -- so reading the malicious fixtures cannot execute them.
 
-Checks (the design docs row 5 / the project history Phase 5 tracker — "human/JSON/SARIF 2.1.0 + CI exit
-codes; SARIF validates against the official schema; exit != 0 on malicious, = 0 on benign"):
+Checks (human/JSON/SARIF 2.1.0 + CI exit
+codes; SARIF validates against the official schema; exit != 0 on malicious, = 0 on benign):
   (a) SARIF for each malicious fixture VALIDATES against the official SARIF 2.1.0 schema and
       carries results with ruleId / level / physicalLocation / message.
   (b) JSON for a malicious fixture ROUND-TRIPS (parse back to an equal Report) and carries findings.
   (c) HUMAN output renders without error and cites rule_id + source line + evidence.
   (d) EXIT CODE is non-zero on each malicious fixture (in-process AND via the real CLI
-      process) and zero on every benign corpus template (0/11, Rule 9).
+      process) and zero on every benign corpus template (0/11).
 
 Run:  .venv/Scripts/python.exe scripts/verify_phase5.py
 Exit code is non-zero if any check fails.
@@ -68,7 +68,7 @@ def _report_for(fname: str) -> Report:
 
 def verify_sarif_schema_valid() -> bool:
     print("=" * 78)
-    print("Phase 5 (a) — SARIF validates against the official SARIF 2.1.0 schema")
+    print("Phase 5 (a) -- SARIF validates against the official SARIF 2.1.0 schema")
     print("=" * 78)
     validator = _validator()
     ok = True
@@ -99,7 +99,7 @@ def verify_sarif_schema_valid() -> bool:
 
 def verify_json_round_trip() -> bool:
     print("\n" + "=" * 78)
-    print("Phase 5 (b) — JSON round-trips (parse back to an equal Report) + carries findings")
+    print("Phase 5 (b) -- JSON round-trips (parse back to an equal Report) + carries findings")
     print("=" * 78)
     report = _report_for(PRIMARY)
     text = render_json(report)
@@ -119,7 +119,7 @@ def verify_json_round_trip() -> bool:
 
 def verify_human_output() -> bool:
     print("\n" + "=" * 78)
-    print("Phase 5 (c) — human output renders and cites rule_id + source line + evidence")
+    print("Phase 5 (c) -- human output renders and cites rule_id + source line + evidence")
     print("=" * 78)
     findings = analyze_template(_read(os.path.join(MALICIOUS_DIR, PRIMARY)))
     text = render_human(make_report(findings))
@@ -148,7 +148,7 @@ def _cli_exit_code(path: str) -> int:
 
 def verify_exit_codes() -> bool:
     print("\n" + "=" * 78)
-    print("Phase 5 (d) — exit != 0 on malicious (in-process + real CLI), = 0 on benign (Rule 9)")
+    print("Phase 5 (d) -- exit != 0 on malicious (in-process + real CLI), = 0 on benign")
     print("=" * 78)
     mal_ok = True
     for fname in _jinja_files(MALICIOUS_DIR):

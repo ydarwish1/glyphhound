@@ -1,12 +1,12 @@
 """Phase 14 verification -- scan the real source (HF tokenizer_config.json / chat_template.jinja).
 
-Checks (the design docs G9 / the project history Phase 14 tracker -- "`scan <owner/name>` (no --file) scans the
-canonical template end-to-end, bytes << total; covers transformers models, not just GGUF"):
+Checks (`scan <owner/name>` (no --file) scans the
+canonical template end-to-end, bytes << total; covers transformers models, not just GGUF):
   (a) NETWORK: a pinned real transformers repo (no GGUF, no --file) scans end-to-end via the
-      canonical tokenizer_config.json -- a tiny metadata read (no weights, Rule 6), a benign
+      canonical tokenizer_config.json -- a tiny metadata read (no weights), a benign
       real model -> exit 0, and `_detect_source` routes a bare owner/name here.
   (b) OFFLINE: a synthetic tokenizer_config.json carrying a MARKER chat_template gates CI, and
-      the multi-template list form tags a sink hidden in a NAMED variant (the §7 payoff).
+      the multi-template list form tags a sink hidden in a NAMED variant.
 
 The analyzer only PARSES the template (never renders), so reading a malicious source cannot
 execute it. (a) needs the network; (b) is offline + deterministic.
@@ -30,7 +30,7 @@ from glyphhound.report import make_report  # noqa: E402
 from glyphhound.scan import _detect_source, scan_source  # noqa: E402
 
 # A pinned real transformers repo whose chat template lives in tokenizer_config.json (no
-# GGUF). Pin by commit SHA for determinism (Rule 7). Its weights (~1 GB model.safetensors)
+# GGUF). Pin by commit SHA for determinism. Its weights (~1 GB model.safetensors)
 # are never requested by this path.
 REPO = "Qwen/Qwen2.5-0.5B-Instruct"
 REVISION = "7ae557604adf67be50417f59c2c2f167def9a775"

@@ -9,8 +9,8 @@
   this raises inside the subprocess and the out-of-scratch file is never created. The
   containment test asserts both: the write attempt was blocked AND the file is absent.
 
-  HARMLESS (the project conventions — MARKER only): even if containment failed, the "payload"
+  HARMLESS (MARKER only): even if containment failed, the "payload"
   only writes a short marker string to a parent-managed temp path that the harness then
-  removes. No real/destructive command; no weights loaded (Rule 6).
+  removes. No real/destructive command; no weights loaded.
 -#}
 {{ cycler.__init__.__globals__.__builtins__['open'](outside, 'w').write('GLYPHHOUND_PHASE6_OUT_OF_SCRATCH') }}

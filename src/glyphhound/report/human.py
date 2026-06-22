@@ -3,8 +3,8 @@
 A readable, deterministic summary of a :class:`~.models.Report`: one block per finding
 citing its rule id, severity, reachability (reachable vs presence-only), source
 template + line, evidence, and the rule rationale — plus a header and a summary line.
-Formats ``Finding[]`` only; never renders a template (the project conventions / the Phase-5
-safety boundary). No timestamps or randomness (Rule 7).
+Formats ``Finding[]`` only; never renders a template (the Phase-5 safety boundary).
+No timestamps or randomness, so the output is deterministic.
 """
 
 from __future__ import annotations
@@ -53,7 +53,7 @@ def render_human(report: Report) -> str:
             f"{_template_label(f.template_name)}:{f.source_line}{gate}"
         )
         # ASCII separator: GlyphHound's primary console is Windows cp1252, where a
-        # unicode em-dash mojibakes (see the project history Gotchas). Keep this output clean.
+        # unicode em-dash mojibakes. Keep this output clean.
         lines.append(f"      {f.sink_kind}: {f.evidence}")
         catalog = RULE_CATALOG.get(f.rule_id)
         if catalog is not None:

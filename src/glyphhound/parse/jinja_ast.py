@@ -124,7 +124,7 @@ def dump_ast(node: nodes.Node) -> str:
 
     Walks only ``node.fields`` (the structural children) and never ``node.attributes``
     (``lineno``/``environment``), so the same template always produces the same dump —
-    suitable as a golden value for verification (the design docs Phase 1 check).
+    suitable as a golden value for the Phase 1 verification check.
     """
     lines: list[str] = []
     _dump_node(node, 0, lines)

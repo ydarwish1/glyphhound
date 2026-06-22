@@ -1,21 +1,21 @@
-"""Phase 8 — head-to-head benchmark: GlyphHound vs Promptfoo ModelAudit.
+"""Phase 8 -- head-to-head benchmark: GlyphHound vs Promptfoo ModelAudit.
 
-Runs BOTH scanners over the SAME artifacts — each committed MARKER-only payload in
+Runs BOTH scanners over the SAME artifacts -- each committed MARKER-only payload in
 ``benchmark/payloads/`` is wrapped at run time into a minimal GGUF (tests/synthetic.
 build_gguf), so GlyphHound (reading the template back out of the .gguf) and ModelAudit
-(scanning the .gguf) see byte-identical input — and prints a deterministic catch/miss
+(scanning the .gguf) see byte-identical input -- and prints a deterministic catch/miss
 table plus summary catch-rates.
 
-Honest positioning (the project conventions): ModelAudit EXISTS and is a capable scanner. The
+Honest positioning: ModelAudit EXISTS and is a capable scanner. The
 table reports its real verdict on every payload, including the obfuscations it ALSO catches.
 GlyphHound's narrow, provable edge is the string-concat-via-subscript obfuscation that leaves
-no literal trigger token — its Stage-2 de-obfuscator folds it; ModelAudit's pattern matcher
+no literal trigger token -- its Stage-2 de-obfuscator folds it; ModelAudit's pattern matcher
 does not. The comparison is informational: this script exits non-zero only on a *harness*
 failure (ModelAudit missing, a scan error), never because of how the comparison turned out.
 
-Determinism (Rule 7): payloads run in manifest order; the table contains no timestamps,
+Determinism: payloads run in manifest order; the table contains no timestamps,
 temp paths, or other run-varying data, so the same inputs + pinned ModelAudit version yield
-a byte-identical table. The .gguf artifacts are generated at run time (never committed —
+a byte-identical table. The .gguf artifacts are generated at run time (never committed --
 *.gguf is gitignored) and cleaned up.
 
 Setup (one time): create the isolated ModelAudit env and install the pinned version
@@ -68,8 +68,8 @@ def find_modelaudit() -> str | None:
     """Locate the ModelAudit CLI: env override, the isolated venv, then PATH.
 
     ModelAudit lives in a SEPARATE virtualenv (``.venv-modelaudit``) on purpose, so its
-    ~80-package dependency tree never perturbs GlyphHound's pinned/locked environment
-    (the project conventions). A real user invokes its packaged CLI exactly like this.
+    ~80-package dependency tree never perturbs GlyphHound's pinned/locked environment.
+    A real user invokes its packaged CLI exactly like this.
     """
     override = os.environ.get("GLYPHHOUND_MODELAUDIT")
     if override and os.path.exists(override):
@@ -105,7 +105,7 @@ def modelaudit_sandbox_render_available(exe: str) -> bool:
     """Whether ModelAudit's optional DYNAMIC sandbox-render test is active in this env.
 
     The render test only runs when ``jinja2`` is importable in ModelAudit's interpreter
-    (``HAS_JINJA2_SANDBOX`` in its scanner). We benchmark this STRONGEST config (Rule 3), so
+    (``HAS_JINJA2_SANDBOX`` in its scanner). We benchmark this STRONGEST config, so
     a deterministic check that jinja2 is present beside the modelaudit CLI proves we are not
     benchmarking a regex-only, under-powered incumbent. (We do not assert a render *catch*
     itself: that worker is timing-dependent and non-deterministic -- see ../benchmark/README.md.)
@@ -144,7 +144,7 @@ def modelaudit_verdict(exe: str, gguf_path: str) -> dict:
 
     'caught' == ModelAudit's chat-template SSTI scanner flagged it: a ``jinja2_template_check``
     issue carrying a ``details.pattern_type``. We key on that specific detector (not merely a
-    non-zero exit) so the comparison is like-for-like with GlyphHound's chat-template finding —
+    non-zero exit) so the comparison is like-for-like with GlyphHound's chat-template finding --
     and not credited to some unrelated scanner. Raises HarnessError on a scan error (exit 2).
     """
     proc = subprocess.run([exe, "scan", gguf_path, "--format", "json", "--no-cache"],
@@ -266,7 +266,7 @@ def _rate(n: int, d: int) -> str:
 
 def format_summary(s: dict) -> str:
     lines: list[str] = []
-    lines.append("Summary (headline = obfuscated-payload catch rate, the design docs section 8):")
+    lines.append("Summary (headline = obfuscated-payload catch rate):")
     lines.append(f"  Obfuscated malicious payloads (excludes the plain control): {s['obfuscated_total']}")
     lines.append(f"    GlyphHound caught: {_rate(s['gh_obfuscated_caught'], s['obfuscated_total'])}")
     lines.append(f"    ModelAudit caught: {_rate(s['ma_obfuscated_caught'], s['obfuscated_total'])}")
@@ -290,7 +290,7 @@ def main(argv: list[str] | None = None) -> int:
     if exe is None:
         sys.stderr.write(
             "ERROR: ModelAudit CLI not found. The benchmark needs the incumbent installed in an\n"
-            "isolated venv (keeps its deps out of GlyphHound's locked env, the project conventions):\n\n"
+            "isolated venv (keeps its deps out of GlyphHound's locked env):\n\n"
             "  python -m venv .venv-modelaudit\n"
             "  .venv-modelaudit/Scripts/python -m pip install \"modelaudit==0.2.47\"\n\n"
             "Or set GLYPHHOUND_MODELAUDIT to the modelaudit executable.\n"

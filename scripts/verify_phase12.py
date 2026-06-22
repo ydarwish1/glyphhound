@@ -1,17 +1,17 @@
 """Phase 12 verification -- Catalog++ (CWE-mapped).
 
-Offline and deterministic (the project conventions): it analyzes on-disk fixtures and the
+Offline and deterministic: it analyzes on-disk fixtures and the
 vendored benign corpus -- no network, no weights, and it never *renders* a template
 (only parses + walks the AST), so reading the malicious fixtures cannot execute them.
 
-Checks (the design docs G7 / the project history Phase 12 tracker):
+Checks:
   (a) Every Phase-12 family MARKER fixture flags a reachable finding and gates CI.
   (b) Catalog coverage: each newly added dunder is a reachable GH-S001, and each newly
       added code-exec name is a reachable GH-S002 when called.
   (c) CWE is surfaced: every rule maps to CWE-94/CWE-1336; JSON carries a per-finding cwe
       and still round-trips; SARIF carries cwe on each rule (+ a GitHub `tags` entry) and
       each result, and still validates against the vendored official SARIF 2.1.0 schema.
-  (d) Rule 9: the expanded catalog keeps the real benign corpus at 0.00% (0/120) gating
+  (d) the expanded catalog keeps the real benign corpus at 0.00% (0/120) gating
       false positives (re-measured), and the 11 benign fixtures clean at presence level.
 
 Run:  .venv/Scripts/python.exe scripts/verify_phase12.py
@@ -162,7 +162,7 @@ def _gating_fp(directory: str) -> tuple[int, int, int]:
 
 def verify_corpus_clean() -> bool:
     print("\n" + "=" * 78)
-    print("Phase 12 (d) -- Rule 9: expanded catalog keeps the corpus + fixtures FP-clean")
+    print("Phase 12 (d) -- expanded catalog keeps the corpus + fixtures FP-clean")
     print("=" * 78)
     n_corpus, present_corpus, gating_corpus = _gating_fp(CORPUS_DIR)
     n_benign, present_benign, gating_benign = _gating_fp(BENIGN_DIR)

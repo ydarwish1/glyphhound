@@ -1,13 +1,13 @@
-"""Phase 9 verification — end-to-end scan wiring the Stage-1 acquirer into the CLI.
+"""Phase 9 verification -- end-to-end scan wiring the Stage-1 acquirer into the CLI.
 
 Proves the headline command is real: ``glyphhound scan <reference>`` resolves the source,
 extracts the template(s) without loading weights, scans every one, and gates CI by exit
 code. Has a NETWORK part (a pinned real Hugging Face GGUF) and an OFFLINE part (a locally
 built MARKER GGUF), so it needs the network like ``verify_phase0`` does.
 
-Checks (the project history Phase 9 tracker — "`glyphhound scan <pinned HF repo --file>` runs
-end-to-end no-weights -> exit 0 benign; a marker GGUF -> exit != 0"):
-  (a) A pinned real HF repo scans end-to-end: ``bytes_fetched << total_size`` (Rule 6),
+Checks (`glyphhound scan <pinned HF repo --file>` runs
+end-to-end no-weights -> exit 0 benign; a marker GGUF -> exit != 0):
+  (a) A pinned real HF repo scans end-to-end: ``bytes_fetched << total_size``,
       exit 0 (a benign real model), via the HF-repo path AND the direct .gguf-URL path.
   (b) A local MARKER GGUF with the marker hidden in a NAMED template (benign default) is
       caught and tagged to that template -> exit != 0, both in-process and via the real
@@ -34,8 +34,8 @@ from glyphhound.acquire import read_gguf_template  # noqa: E402
 from glyphhound.scan import scan_source  # noqa: E402
 from synthetic import build_gguf  # noqa: E402
 
-# A pinned real benign model (mirrors scripts/verify_phase0.py — pinned by commit SHA for
-# determinism, Rule 7).
+# A pinned real benign model (mirrors scripts/verify_phase0.py -- pinned by commit SHA for
+# determinism).
 HF_REPO = "Qwen/Qwen2.5-0.5B-Instruct-GGUF"
 HF_FILE = "qwen2.5-0.5b-instruct-q4_k_m.gguf"
 HF_SHA = "9217f5db79a29953eb74d5343926648285ec7e67"
@@ -65,7 +65,7 @@ def _cli(args: list[str]) -> subprocess.CompletedProcess:
 
 def verify_real_model_end_to_end() -> bool:
     print("=" * 78)
-    print("Phase 9 (a) — a pinned real HF model scans end-to-end, no weights, exit 0")
+    print("Phase 9 (a) -- a pinned real HF model scans end-to-end, no weights, exit 0")
     print("=" * 78)
     try:
         raw = read_gguf_template(HF_REPO, filename=HF_FILE, revision=HF_SHA)
@@ -99,7 +99,7 @@ def verify_real_model_end_to_end() -> bool:
 
 def verify_marker_gguf_gates_ci() -> bool:
     print("\n" + "=" * 78)
-    print("Phase 9 (b) — a local MARKER GGUF (sink in a NAMED template) gates CI")
+    print("Phase 9 (b) -- a local MARKER GGUF (sink in a NAMED template) gates CI")
     print("=" * 78)
     mal_gguf = build_gguf(
         chat_template=BENIGN_TEMPLATE,

@@ -1,13 +1,13 @@
-"""Phase 17 — aggregate the scale-scan JSONL into a prevalence CSV + summary JSON.
+"""Phase 17 -- aggregate the scale-scan JSONL into a prevalence CSV + summary JSON.
 
-Reads the per-model checkpoint produced by ``scale_scan.py`` (summaries only — no raw
+Reads the per-model checkpoint produced by ``scale_scan.py`` (summaries only -- no raw
 template text) and emits two reproducible artifacts in ``study/``:
 
-* ``prevalence.csv`` — one row per scanned chat template (model, pinned SHA, name, sha256,
+* ``prevalence.csv`` -- one row per scanned chat template (model, pinned SHA, name, sha256,
   gating/obfuscated flags, flagged sink identifiers + lines).
-* ``prevalence_summary.json`` — the aggregate counts behind the writeup's headline.
+* ``prevalence_summary.json`` -- the aggregate counts behind the writeup's headline.
 
-Pure aggregation over the recorded data — no network, deterministic. Re-run any time after a
+Pure aggregation over the recorded data -- no network, deterministic. Re-run any time after a
 scan (or a ``scale_scan.py --rescan``) to regenerate the artifacts.
 
     .venv/Scripts/python.exe scripts/prevalence_report.py
@@ -54,7 +54,7 @@ def _scanned_templates(records: list[dict]) -> list[dict]:
 
 
 def aggregate(records: list[dict]) -> dict:
-    """The prevalence counts. The rate's denominator is *parseable* chat templates — a model
+    """The prevalence counts. The rate's denominator is *parseable* chat templates -- a model
     with no chat template never enters ``records`` (it is skipped at scan time), and an
     unparseable template is a coverage gap counted separately, not a benign or a finding."""
     templates = _scanned_templates(records)
@@ -83,7 +83,7 @@ def aggregate(records: list[dict]) -> dict:
         "capable_by_reachable_rule": dict(sorted(by_rule.items())),
         "method": "make_report(analyze_template(text)).exit_code != 0 == code-exec-capable "
                   "(the real CI gate); 'obfuscated' = gates only after de-obfuscation, not on "
-                  "the raw walk. Parse-only, no weights (Rule 6); summaries only (Rule 4).",
+                  "the raw walk. Parse-only, no weights; summaries only.",
     }
 
 

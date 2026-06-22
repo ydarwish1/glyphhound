@@ -5,7 +5,7 @@
   taint walk (both `Const`-only) can see the dunder it stands for, so Phase 2..12 MISS this.
 
   Phase 13 substitutes constant-string {% set %} variables into their loads BEFORE the fold
-  (a single deterministic pass over a copy; never evaluates or renders — Rule 4/6), so
+  (a single deterministic pass over a copy; never evaluates or renders), so
   `cycler[i][g]` becomes `cycler['__init__']['__globals__']` and the existing identifier-only
   walk fires. It also covers propagate-THEN-fold: `a + b` of two propagated consts folds to
   a single dunder (`'__re' + 'duce__'` -> `'__reduce__'`, a Phase-12 catalog name).
@@ -13,7 +13,7 @@
       obj    -> __reduce__                (vars a + b, folded after propagation)
       target -> __class__                 (var c)
 
-  HARMLESS (the project conventions — MARKER only): parsed + walked, never rendered; constant
+  HARMLESS (MARKER only): parsed + walked, never rendered; constant
   propagation is a static AST rewrite — no string is evaluated. The dangerous SIGNAL is the
   resolved dunder chain, not the harmless 'cycler'/'obj'/'target' identifiers.
   Sources: PayloadsAllTheThings (SSTI/Jinja2 variable-held identifier obfuscation); CWE-94 / CWE-1336.

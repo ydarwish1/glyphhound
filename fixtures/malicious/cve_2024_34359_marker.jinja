@@ -5,7 +5,7 @@
   This is the classic Jinja2 SSTI / sandbox-escape chain a malicious chat template
   uses to reach code execution the instant a runtime renders it. It is HARMLESS here:
   - GlyphHound's Stage-3 analyzer only PARSES this and walks the AST; it never renders
-    it (the project conventions — MARKER payloads only, no working exploit committed).
+    it — MARKER payloads only, no working exploit committed.
   - The "payload" is the sentinel string GLYPHHOUND_PHASE2_MARKER, not a real command;
     if it were ever executed it would try to run a nonexistent command and do nothing.
 

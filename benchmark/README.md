@@ -3,10 +3,9 @@
 This is GlyphHound's single most important credibility artifact: a **reproducible**,
 **measured** comparison against the incumbent, [Promptfoo
 **ModelAudit**](https://www.promptfoo.dev/docs/model-audit/), on an obfuscated chat-template
-payload set. It substantiates the project's one defensible claim and **nothing larger**
-(the design docs, the project conventions).
+payload set. It substantiates the project's one defensible claim and **nothing larger**.
 
-ModelAudit is a capable scanner, not a strawman. To avoid under-powering it (Rule 3) this
+ModelAudit is a capable scanner, not a strawman. To avoid under-powering it this
 benchmark runs it in its **strongest configuration** — `modelaudit==0.2.47` **with `jinja2`
 and `gguf` installed**, which activates its optional *dynamic* `SandboxedEnvironment` render
 test on top of its regex SSTI patterns and its static AST probe. (A plain `pip install
@@ -34,7 +33,7 @@ Each row is one MARKER-only payload wrapped into a minimal GGUF and scanned by *
 | 12 | benign string concat (**control**) | `'rol'+'e'`→`'role'` | ok-clean | ok-clean | clean |
 | 13 | benign gated template (**control**) | none (guard, no sink) | ok-clean | ok-clean | clean |
 
-**Headline (the design docs — obfuscation catch rate, over the 9 obfuscated payloads, rows 2–10):**
+**Headline (obfuscation catch rate, over the 9 obfuscated payloads, rows 2–10):**
 
 | | GlyphHound | ModelAudit (strongest config) |
 |---|:---:|:---:|
@@ -58,7 +57,7 @@ sample — see the Phase-15 wider-FP audit (`study/wider_fp_audit.json`).
 
 ## What this shows, honestly
 
-**Where ModelAudit also catches (rows 1–3, 7), reported honestly (Rule 3):** the **plain** chain
+**Where ModelAudit also catches (rows 1–3, 7), reported honestly:** the **plain** chain
 (row 1) and the `|attr`/`getattr` forms (rows 2–3) keep a literal trigger token (`|attr(`,
 `getattr(`) that ModelAudit's **regex** matches even though the dunder *names* are concatenated;
 and the **`str.format` family** (row 7) trips a *separate* ModelAudit heuristic — its generic
@@ -99,7 +98,7 @@ chain (no gating) is caught **only** by ModelAudit's dynamic render, whose multi
 worker is timing-dependent: across repeated runs we measured its verdict on the same artifact
 flip between `FLAG` and `miss` (the render worker sometimes does not fire within its budget, and
 the static fallback is concat-blind). A scanner's verdict that changes between identical runs is
-itself a contrast with GlyphHound's deterministic static analysis (the project conventions). Because
+itself a contrast with GlyphHound's deterministic static analysis. Because
 the asserted table must be byte-identical across runs, such render-only payloads are
 deliberately **excluded** from it; every payload above has a deterministic verdict for both
 tools.
@@ -107,7 +106,7 @@ tools.
 ## How to reproduce
 
 ModelAudit lives in a **separate** virtualenv so its ~80-package dependency tree never perturbs
-GlyphHound's pinned/locked environment (determinism, the project conventions):
+GlyphHound's pinned/locked environment (determinism):
 
 ```bash
 # one-time setup of the incumbent in its STRONGEST config (pinned)
@@ -121,7 +120,7 @@ python -m venv .venv-modelaudit
 
 `scripts/run_benchmark.py` exits non-zero **only** on a harness failure (ModelAudit missing, a
 scan error). The comparison itself is informational — the table is the deliverable, reported
-whichever way it comes out (Rule 3). The `.gguf` artifacts are built at run time from the
+whichever way it comes out. The `.gguf` artifacts are built at run time from the
 committed `payloads/*.jinja` and deleted afterwards (they are gitignored; never committed).
 
 ## Methodology (what makes this fair and deterministic)
@@ -144,10 +143,10 @@ committed `payloads/*.jinja` and deleted afterwards (they are gitignored; never 
   a catch it never earned on the obfuscated code. (We observed exactly this in development.) The
   payload files keep their comments **free of literal sink tokens**; `tests/test_benchmark.py`
   enforces it.
-- **Determinism (Rule 7).** Payloads run in manifest order; the table has no timestamps, temp
+- **Determinism.** Payloads run in manifest order; the table has no timestamps, temp
   paths, or other run-varying data, so the same inputs + pinned versions yield a byte-identical
   table. `verify_phase8.py` checks two independent runs match.
-- **MARKER only (Rule 4) / no weights (Rule 6).** Every malicious payload simulates exploitation
+- **MARKER only / no weights.** Every malicious payload simulates exploitation
   with the harmless sentinel `GLYPHHOUND_BENCH_MARKER`; the synthetic GGUFs carry no tensor data.
   GlyphHound never renders (it parses + walks the AST). ModelAudit's own sandbox render (when it
   runs) is its containment, inside a Jinja `SandboxedEnvironment` that blocks the access — no

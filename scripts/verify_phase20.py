@@ -1,10 +1,10 @@
 """Phase 20 verification -- small polish: deep-nest DoS guard + auto .gguf + gated repos.
 
-Offline and deterministic (the project conventions): the deep-nest checks are pure; the network
+Offline and deterministic: the deep-nest checks are pure; the network
 bits (the Hub tree listing and gated 401/403 responses) are exercised by swapping the module's
-HTTP helpers for stubs, so no request is issued. No weights are ever read (Rule 6).
+HTTP helpers for stubs, so no request is issued. No weights are ever read.
 
-Checks (the design docs row 20 / the project history Phase 20 tracker):
+Checks:
   (a) deep-nest DoS guard: a pathologically nested template raises a clean ParseError (not an
       uncaught RecursionError), the cap has >=3x headroom over the deepest benign corpus
       template, and no real corpus template is falsely rejected.

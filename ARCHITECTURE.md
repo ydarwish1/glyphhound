@@ -100,7 +100,7 @@ Report        { findings[], summary, exit_code }
 
 ---
 
-## 6. Proposed Repo Layout
+## 6. Repository Layout
 ```
 glyphhound/
 ├─ README.md  ARCHITECTURE.md  CHANGELOG.md  LICENSE

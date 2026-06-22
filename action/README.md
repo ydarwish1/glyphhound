@@ -64,5 +64,5 @@ Scan a local model file committed to the repo instead:
 The action sets up Python, `pip install`s GlyphHound (from this repo checkout — no PyPI release
 required), runs `glyphhound scan <ref> --format sarif`, uploads the SARIF via
 `github/codeql-action/upload-sarif`, and (optionally) fails the job on a gating finding. The scan
-fetches only template metadata (never weights, the project conventions) and only *parses* the template
+fetches only template metadata (never weights) and only *parses* the template
 — it never renders it, so scanning a malicious model cannot execute it.

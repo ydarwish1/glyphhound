@@ -1,23 +1,23 @@
 """Build the Phase-7 benign FP corpus: >=100 DISTINCT real Hugging Face chat templates.
 
 For each candidate GGUF model on the Hub, range-fetch *only* the metadata header to read
-``tokenizer.chat_template`` (never the weights — the project conventions), pin the repo by its
+``tokenizer.chat_template`` (never the weights), pin the repo by its
 current commit SHA, dedupe by template sha256, keep only templates the analyzer can parse,
 and vendor the unique ones into ``corpus/templates/*.jinja`` with ``corpus/PROVENANCE.json``.
 
 This is a SEPARATE, larger deliverable from the small Phase-1 ``fixtures/benign`` parse
-corpus (Decision Log): ``fixtures/benign`` is the SHA-pinned Rule-9 set that the Phase 2-6
+corpus: ``fixtures/benign`` is the SHA-pinned set that the Phase 2-6
 verifiers iterate; the >=100-template ``corpus/`` set is the credibility number for the
-analyzer's false-positive rate (PRD §7.6/§8, Phase 7), measured OFFLINE by
-``scripts/verify_phase7.py`` over these vendored, pinned, deduped files (Rule 7).
+analyzer's false-positive rate (Phase 7), measured OFFLINE by
+``scripts/verify_phase7.py`` over these vendored, pinned, deduped files.
 
 Run once (needs network; range-fetch only, no weights):
     .venv/Scripts/python.exe scripts/build_fp_corpus.py
 
 Candidates are the Hub's most-downloaded GGUF models (cursor-paginated) plus a small diverse
 seed. Most quant repos of one base model share a single template, so reaching >=100 DISTINCT
-templates means crawling several hundred repos and deduping hard by sha256 (the docs warn
-this is "more work than it looks").
+templates means crawling several hundred repos and deduping hard by sha256 -- more work
+than it looks.
 """
 
 from __future__ import annotations
@@ -48,14 +48,14 @@ _API = "https://huggingface.co/api/models"
 _UA = "glyphhound/0.0 (+fp-corpus-build; no-weights)"
 
 _TARGET_UNIQUE = 120        # collect up to this many distinct templates (need >=100)
-_MIN_REQUIRED = 100         # the Phase-7 bar (PRD §9 row 7)
+_MIN_REQUIRED = 100         # the Phase-7 bar
 _MAX_CANDIDATES = 2500      # safety cap on repos examined
 _MAX_PAGES = 40             # safety cap on API pages crawled (100 repos/page)
 _POLITE = 0.10              # seconds between Hub requests (be a good citizen)
 
 # A small diverse seed (distinct families) crawled first, so the corpus is anchored by
 # known-good templates even if the popularity crawl is thin on a given day. Weights are
-# never read — only the metadata header — so large repos are fine.
+# never read -- only the metadata header -- so large repos are fine.
 SEED_REPOS = [
     "Qwen/Qwen2.5-0.5B-Instruct-GGUF",
     "bartowski/Llama-3.2-1B-Instruct-GGUF",
@@ -106,7 +106,7 @@ def _get_json_and_next(url: str) -> tuple[object, str | None]:
 
 
 def _crawl_candidates() -> list[str]:
-    """Most-downloaded GGUF repo ids, cursor-paginated (popular = realistic, PRD §7.6)."""
+    """Most-downloaded GGUF repo ids, cursor-paginated (popular = realistic)."""
     url = f"{_API}?filter=gguf&sort=downloads&direction=-1&limit=100&full=false"
     ids: list[str] = []
     seen: set[str] = set()
@@ -169,7 +169,7 @@ def main() -> int:
         try:
             sha, filename = _resolve(repo)
             r = read_gguf_template(repo, filename=filename, revision=sha)
-            r.assert_no_weights_loaded()  # Rule 6: bytes_fetched << total_size
+            r.assert_no_weights_loaded()  # invariant: bytes_fetched << total_size
             text = r.template_string
             analyze_template(text)  # ensure it parses; keep the corpus analyzable
         except WeightsLoadedError:

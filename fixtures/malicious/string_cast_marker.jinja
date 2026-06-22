@@ -14,8 +14,8 @@
   WITHOUT the Phase-19 fold this template does not gate; WITH it the chain is reachable=True
   (GH-S001 + GH-S002).
 
-  HARMLESS (the project conventions — MARKER only): parsed + folded over string *literals*, never
-  rendered or evaluated (Rule 4/6). The "payload" is the sentinel GLYPHHOUND_PHASE19_STRINGCAST_MARKER.
+  HARMLESS (MARKER only): parsed + folded over string *literals*, never
+  rendered or evaluated. The "payload" is the sentinel GLYPHHOUND_PHASE19_STRINGCAST_MARKER.
   Sources: PayloadsAllTheThings (SSTI filter-wrapping obfuscation); PortSwigger SSTI;
   CWE-94 (code injection) / CWE-1336 (template injection).
 -#}

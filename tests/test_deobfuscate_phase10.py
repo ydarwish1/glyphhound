@@ -1,12 +1,12 @@
-"""Offline, deterministic tests for the Phase-10 de-obfuscation coverage++ (Rule 8).
+"""Offline, deterministic tests for the Phase-10 de-obfuscation coverage++.
 
 Phase 10 widens the fold from constant `+`/`~` concatenation to the other ways an identifier
 can be assembled from string literals — `str.format()`, constant slice/index, the `|join`
 and `|replace` filters — and resolves the dunder name when it hides in a keyword argument
 (`getattr(obj, name=...)`, `x|attr(name=...)`). Each obfuscated form must fold to a
 *reachable* dunder/code-exec sink, while the same operations over benign content must stay
-clean (the false-positive guard, Rule 9). Folding is a static AST rewrite over string
-literals only — nothing is evaluated dynamically or rendered (Rule 4/Rule 6).
+clean (the false-positive guard). Folding is a static AST rewrite over string
+literals only — nothing is evaluated dynamically or rendered.
 """
 
 from __future__ import annotations
@@ -88,7 +88,7 @@ def test_kwarg_getattr_is_upgraded_from_reflection_to_dunder():
 
 
 # --------------------------------------------------------------------------- #
-# The same operations over benign content must NOT flag (Rule 9 — no new FPs).
+# The same operations over benign content must NOT flag (no new FPs).
 # --------------------------------------------------------------------------- #
 @pytest.mark.parametrize("benign", [
     "{{ 'r{}e'.format('ol') }}",            # builds 'role'
@@ -137,7 +137,7 @@ def test_non_constant_operands_are_not_folded():
 
 def test_format_field_access_is_never_evaluated():
     """A str.format field that accesses attributes (`{0.__class__...}`) must NOT be folded —
-    folding would make str.format traverse Python internals at analysis time (Rule 4/6). It is
+    folding would make str.format traverse Python internals at analysis time. It is
     left unfolded (so no fold note, and no dunder finding is invented from the traversal)."""
     for src in ("{{ y['{0.__class__}'.format('x')] }}",
                 "{{ y['{0.__class__.__init__.__globals__}'.format('x')] }}",

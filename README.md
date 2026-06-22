@@ -1,5 +1,9 @@
 # GlyphHound
 
+[![CI](https://github.com/ydarwish1/glyphhound/actions/workflows/ci.yml/badge.svg)](https://github.com/ydarwish1/glyphhound/actions/workflows/ci.yml)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![Python: 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](pyproject.toml)
+
 A deterministic scanner that detects code-executing chat templates inside model files
 (GGUF / Ollama / Hugging Face), before you load the model.
 
@@ -39,6 +43,44 @@ Pipeline (five stages):
 5. Report: human, JSON, and SARIF 2.1.0, with a configurable severity threshold that drives the
    exit code. An optional, off-by-default sandbox stage renders the template in a contained
    subprocess to confirm a finding.
+
+## Example
+
+Scanning a malicious template (an obfuscated `__import__` → `os.system` chain) — it gates CI
+with a non-zero exit code:
+
+```text
+$ glyphhound scan fixtures/malicious/cve_2024_34359_marker.jinja
+GlyphHound scan report
+======================
+threshold: fail CI on reachable findings of severity >= high
+exit code: 1
+
+findings (5):
+  [GH-S002] CRITICAL reachable     tokenizer.chat_template:17  [GATES CI]
+      code-exec-name: .system
+      reason: reference to a code-execution or dangerous-capability name (eval/exec/os/subprocess/...)
+  [GH-S001] CRITICAL reachable     tokenizer.chat_template:17  [GATES CI]
+      dunder-attribute: .__import__
+      reason: attribute/subscript/|attr access to a Python dunder used for sandbox escape
+  ... (3 more reachable dunder findings: .__builtins__, .__globals__, .__init__)
+
+summary: 5 finding(s), 5 reachable; critical=5 high=0; 5 gating -> exit 1
+```
+
+Scanning a real, benign template — it stays quiet and passes:
+
+```text
+$ glyphhound scan fixtures/benign/Qwen__Qwen2.5-0.5B-Instruct-GGUF.jinja
+GlyphHound scan report
+======================
+threshold: fail CI on reachable findings of severity >= high
+exit code: 0
+
+findings: 0 (nothing flagged at or above the detection threshold)
+
+summary: 0 finding(s), 0 reachable; critical=0 high=0; 0 gating -> exit 0
+```
 
 ## How it compares
 
@@ -127,8 +169,13 @@ environment (`verify_phase8`); the rest are offline.
 
 - `ARCHITECTURE.md`: the five-stage pipeline, with the exact input/output of each stage.
 - `CHANGELOG.md`: the full build history, stage by stage.
-- `benchmark/`: the head-to-head methodology and payloads.
+- `benchmark/`: the head-to-head methodology, payloads, and the reproducible yardstick
+  (`benchmark/RELEASE.md`).
+- `study/wider_fp_audit.json`: the wider false-positive audit behind the 0/241 figure.
+- `action/`: the GitHub Action wrapper that runs a scan in CI and uploads SARIF to code scanning.
+- `SECURITY.md`: how to report a vulnerability. `CONTRIBUTING.md`: how to build and test.
 
 ## License
 
-Apache-2.0. See `LICENSE`.
+Apache-2.0. See `LICENSE`. Third-party attribution (Jinja2, the vendored SARIF schema, and the
+benign template corpus) is in `NOTICE`.

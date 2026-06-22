@@ -14,7 +14,7 @@ DENIED outright (a contained render never needs to alias files) — closing the 
 escape a path-based ``realpath`` check alone cannot see, since a hardlink is just a second
 name for the same inode (Phase 18). The Linux-only kernel/OS backstops — seccomp, ``resource``
 rlimits and privilege-drop — live in :mod:`.harden` and are applied in the child alongside
-this hook (the project conventions — ship the containment we can prove).
+this hook.
 """
 
 from __future__ import annotations

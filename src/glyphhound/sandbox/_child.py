@@ -7,7 +7,7 @@ renders the template with a MARKER context, and writes a JSON result to stdout.
 
 This is the ONLY place in GlyphHound that a template is rendered, and it only ever runs in
 this isolated child process (spawned by the parent confirmer) — never in the main process.
-It never loads model weights (the project conventions). Containment — no network, no process
+It never loads model weights. Containment — no network, no process
 spawn, no out-of-scratch write — is enforced by :func:`..policy.make_audit_hook`; the
 parent observes the sentinel file to decide whether code execution was actually reached.
 """

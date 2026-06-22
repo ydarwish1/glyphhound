@@ -12,7 +12,7 @@ Usage::
 Hugging Face repo id (its canonical ``tokenizer_config.json``/``chat_template.jinja``
 template, or a ``.gguf`` quant with ``--file``), or an Ollama model name; ``-`` reads a raw
 template from stdin. The acquirer fetches only metadata, so this never downloads the
-weights (the project conventions), and the analyzer only *parses* the template (never renders
+weights, and the analyzer only *parses* the template (never renders
 it). Exit codes: ``0`` clean, ``1`` a reachable finding gates CI, ``2`` the scan could not
 run (bad reference, network/acquire error, unparseable template).
 """

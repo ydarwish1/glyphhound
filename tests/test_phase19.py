@@ -1,10 +1,10 @@
 """Phase 19 — close hidden string-building obfuscation bypasses (Mul / printf / |string).
 
-Fixture-driven (the project conventions): a dunder hidden behind ``'_' * 2``, ``'%s' % (...)`` /
+Fixture-driven: a dunder hidden behind ``'_' * 2``, ``'%s' % (...)`` /
 ``|format``, or wrapped in ``|string`` folds to its constant value before the unchanged
 identifier-only walk, so the chain gates. Benign uses of the same ops (separator lines, printf
-with variables) stay clean (Rule 9). The folds are bounded so a pathological repetition / width
-cannot allocate a giant transient (Rule 7). All offline, parse-only — fixtures are never rendered.
+with variables) stay clean. The folds are bounded so a pathological repetition / width
+cannot allocate a giant transient. All offline, parse-only — fixtures are never rendered.
 """
 
 from __future__ import annotations
@@ -90,7 +90,7 @@ def test_huge_printf_width_is_bounded_not_folded():
 ])
 def test_arg_supplied_printf_width_is_refused_no_giant_alloc(form):
     # The `*` width/precision comes from an argument, not the format string; folding it would
-    # allocate a ~1 GB transient. _apply_printf must refuse it BEFORE computing (Rule 7).
+    # allocate a ~1 GB transient. _apply_printf must refuse it BEFORE computing.
     findings = analyze_template(form)
     assert not any(f.reachable for f in findings)
 

@@ -1,8 +1,8 @@
 """Offline tests for Phase 13 — constant-propagation.
 
-Fixture-driven (the project conventions): a dangerous identifier held in a ``{% set %}``
+Fixture-driven: a dangerous identifier held in a ``{% set %}``
 variable must flag reachable after propagation, while benign / re-bound / loop / parameter
-variables must NOT be propagated (Rule 9 — the real benign corpus stays clean). The
+variables must NOT be propagated (the real benign corpus stays clean). The
 analyzer only parses + walks the AST here; nothing is rendered.
 """
 
@@ -108,7 +108,7 @@ def test_propagation_is_deterministic():
     assert a == b
 
 
-# --- Rule 9: the real benign fixtures stay clean after propagation ---------------
+# --- the real benign fixtures stay clean after propagation -----------------------
 
 @pytest.mark.parametrize("fname", _jinja_files(BENIGN_DIR))
 def test_benign_fixtures_stay_clean_after_propagation(fname):

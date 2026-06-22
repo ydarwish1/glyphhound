@@ -11,7 +11,7 @@ proved a dangerous chain builds toward it) **and** its severity is at or above a
 configurable threshold (default :data:`DEFAULT_SEVERITY_THRESHOLD` = ``high``).
 Presence-only findings — a variable merely named ``system``, a generic ``|attr('foo')``
 pivot — are still reported (annotate, never filter) but must not break a build, or we
-would reintroduce the false positives reachability was built to remove (the project conventions). ``reachable is True`` (not truthy) keeps ``None`` ("not analyzed") from gating.
+would reintroduce the false positives reachability was built to remove. ``reachable is True`` (not truthy) keeps ``None`` ("not analyzed") from gating.
 """
 
 from __future__ import annotations
@@ -123,8 +123,7 @@ def make_report(findings: Iterable[Finding], *,
     """Build a :class:`Report` from ``Finding[]`` and apply the CI exit-code policy.
 
     Findings are kept in their given (deterministic, AST-walk) order — the reporter
-    never re-sorts them — so the same ``Finding[]`` always yields byte-identical output
-    (the project conventions).
+    never re-sorts them — so the same ``Finding[]`` always yields byte-identical output.
     """
     findings = tuple(findings)
     gating = sum(1 for f in findings if gates_ci(f, severity_threshold))

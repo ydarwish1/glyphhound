@@ -1,27 +1,27 @@
-"""Phase 7 verification — benign corpus + measured false-positive rate.
+"""Phase 7 verification -- benign corpus + measured false-positive rate.
 
-OFFLINE and deterministic (the project conventions): it reads the VENDORED, SHA-pinned,
+OFFLINE and deterministic: it reads the VENDORED, SHA-pinned,
 deduped corpus under ``corpus/`` and never touches the network or loads weights. It only
-*parses* each template (via ``analyze_template`` — parse -> de-obfuscate -> walk), never
+*parses* each template (via ``analyze_template`` -- parse -> de-obfuscate -> walk), never
 *renders* one, so reading the corpus cannot execute it. The network-only BUILD step lives
 separately in ``scripts/build_fp_corpus.py``.
 
-Checks (the design docs row 7 / the project history Phase 7 tracker — "FP rate computed and reported over
->=100 real templates"):
+Checks (FP rate computed and reported over
+>=100 real templates):
   (a) CORPUS: >=100 vendored templates, each matching its pinned ``template_sha256`` in
       PROVENANCE (bytes == the pin), all sha256 DISTINCT (deduped), no orphan files.
-  (b) NO WEIGHTS (Rule 6): every PROVENANCE entry has ``bytes_fetched << total_size``
+  (b) NO WEIGHTS: every PROVENANCE entry has ``bytes_fetched << total_size``
       (fraction_fetched < the no-weights threshold); prints min/mean/max fraction.
   (c) FP RATE: runs the real CI path ``make_report(analyze_template(text))`` over every
-      template and reports the false-positive rate — a template is a false positive iff its
+      template and reports the false-positive rate -- a template is a false positive iff its
       report GATES CI (exit_code != 0, i.e. a finding with ``reachable is True`` at severity
       >= threshold). Also reports the presence-only count (any finding, reachable or not)
-      and the reachable-template count for context. Prints the number either way (Rule 9);
+      and the reachable-template count for context. Prints the number either way;
       any FP is printed in full for honest investigation.
 
-Acceptance bar (recorded in the project history Decision Log): >=100 templates, all no-weights, and a
-gating FP rate at or below ACCEPTANCE_FP_RATE. The rate is the deliverable — it is the
-MEASURED number on real templates, not a tuned one (Rule 9: do not silently tune the
+Acceptance bar: >=100 templates, all no-weights, and a
+gating FP rate at or below ACCEPTANCE_FP_RATE. The rate is the deliverable -- it is the
+MEASURED number on real templates, not a tuned one (do not silently tune the
 analyzer to force 0%).
 
 Run:  .venv/Scripts/python.exe scripts/verify_phase7.py
@@ -47,8 +47,8 @@ CORPUS_DIR = os.path.join(ROOT, "corpus")
 TEMPLATES_DIR = os.path.join(CORPUS_DIR, "templates")
 PROVENANCE_PATH = os.path.join(CORPUS_DIR, "PROVENANCE.json")
 
-MIN_REQUIRED = 100          # PRD §9 row 7
-NO_WEIGHTS_THRESHOLD = 0.10  # matches RawTemplate.assert_no_weights_loaded default (Rule 6)
+MIN_REQUIRED = 100          # minimum real templates for a meaningful FP measurement
+NO_WEIGHTS_THRESHOLD = 0.10  # matches RawTemplate.assert_no_weights_loaded default
 ACCEPTANCE_FP_RATE = 0.0    # recorded bar: the MEASURED gating FP rate must be <= this
 
 
@@ -64,7 +64,7 @@ def _read(path: str) -> str:
 
 def verify_corpus_integrity(prov: list[dict]) -> bool:
     print("=" * 78)
-    print("Phase 7 (a) — corpus: >=100 vendored templates, pinned + deduped, no orphans")
+    print("Phase 7 (a) -- corpus: >=100 vendored templates, pinned + deduped, no orphans")
     print("=" * 78)
     n = len(prov)
     sha_ok = 0
@@ -108,7 +108,7 @@ def verify_corpus_integrity(prov: list[dict]) -> bool:
 
 def verify_no_weights(prov: list[dict]) -> bool:
     print("\n" + "=" * 78)
-    print("Phase 7 (b) — no weights loaded: bytes_fetched << total_size for every model")
+    print("Phase 7 (b) -- no weights loaded: bytes_fetched << total_size for every model")
     print("=" * 78)
     fractions = []
     bad = []
@@ -125,18 +125,18 @@ def verify_no_weights(prov: list[dict]) -> bool:
     for model, frac in bad[:10]:
         print(f"  [FAIL] {model}: fetched {frac:.2%} >= {NO_WEIGHTS_THRESHOLD:.0%}")
     ok = not bad and bool(fractions)
-    print(f"[{'OK' if ok else 'FAIL'}] all {len(fractions)} models read only the header (Rule 6).")
+    print(f"[{'OK' if ok else 'FAIL'}] all {len(fractions)} models read only the header.")
     return ok
 
 
 def verify_fp_rate(prov: list[dict]) -> bool:
     print("\n" + "=" * 78)
-    print("Phase 7 (c) — measured false-positive rate over the real corpus (Rule 9)")
+    print("Phase 7 (c) -- measured false-positive rate over the real corpus")
     print("=" * 78)
     n = len(prov)
     gating_fp = 0       # report gates CI (exit_code != 0) -> the false-positive definition
     reachable_tpls = 0  # >=1 reachable finding (== gating since all rules are severity>=high)
-    presence_tpls = 0   # >=1 finding of ANY kind (reachable or not) — context for the filter
+    presence_tpls = 0   # >=1 finding of ANY kind (reachable or not) -- context for the filter
     parse_errors = 0
     fp_detail = []
     for p in sorted(prov, key=lambda d: d["model"]):
@@ -161,7 +161,7 @@ def verify_fp_rate(prov: list[dict]) -> bool:
     rate = gating_fp / n if n else 1.0
     print(f"templates analyzed:        {n}  (parse errors: {parse_errors})")
     print(f"presence-only (any finding): {presence_tpls}/{n}  "
-          f"({presence_tpls / n:.1%}) — mention a catalog identifier somewhere")
+          f"({presence_tpls / n:.1%}) -- mention a catalog identifier somewhere")
     print(f"reachable findings:          {reachable_tpls}/{n}  ({reachable_tpls / n:.1%})")
     print(f"GATING false positives:      {gating_fp}/{n}")
     print(f"\n>>> MEASURED FALSE-POSITIVE RATE: {rate:.2%}  ({gating_fp}/{n}) <<<\n")

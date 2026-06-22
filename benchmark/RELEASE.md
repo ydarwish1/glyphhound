@@ -1,6 +1,6 @@
 # GlyphHound public yardstick — obfuscation benchmark + labeled corpus
 
-**A reproducible, MARKER-only, redistributable evaluation set for chat-template scanners.**
+**A reproducible, MARKER-only evaluation set for chat-template scanners.**
 *Status: prepared for release. Not yet published.*
 
 If you build or use a model-file / chat-template scanner, this is a dataset you can run your
@@ -20,9 +20,11 @@ CVE-2026-5760 class):
 | **Labeled-benign corpus** | `corpus/templates/` | `corpus/PROVENANCE.json` (each pinned by HF commit SHA, deduped by sha256) | 120 distinct real Hugging Face chat templates, all benign |
 
 Every malicious payload simulates exploitation with the harmless sentinel
-`GLYPHHOUND_BENCH_MARKER` — **no working exploit and no poisoned model is included**, so the set
-is safe to commit and redistribute (the project conventions). Scanning it never loads weights and, for
-GlyphHound, never renders a template (Rule 6).
+`GLYPHHOUND_BENCH_MARKER` — **no working exploit and no poisoned model is included**. The MARKER
+payloads are original work under this project's Apache-2.0 license and safe to redistribute; the
+benign corpus templates are unmodified third-party files, each under its own upstream license (see
+[`../NOTICE`](../NOTICE) and [`../corpus/PROVENANCE.json`](../corpus/PROVENANCE.json)). Scanning the
+set never loads weights and, for GlyphHound, never renders a template.
 
 ## Run it yourself
 
@@ -67,7 +69,7 @@ labels — no GlyphHound internals required:
 `scripts/score_yardstick.py` is a ~90-line worked example of exactly this loop — copy its
 structure and swap in your scanner's verdict function.
 
-## Honest positioning (the project conventions)
+## Honest positioning
 
 This is an **open engineering yardstick**, not a leaderboard or a research claim. ModelAudit is a
 capable incumbent, benchmarked here in its strongest configuration; the comparison is fully

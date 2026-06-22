@@ -8,7 +8,7 @@
   `importlib` is a base name pivoting onto __loader__, so it is REPORTED (presence) while the
   __loader__/__spec__/__wrapped__ accesses are reachable — at least one reachable finding gates.
 
-  HARMLESS (the project conventions — MARKER only): parsed + walked, never rendered; bare attribute
+  HARMLESS (MARKER only): parsed + walked, never rendered; bare attribute
   accesses, no command runs. The SIGNAL is the import-machinery dunders + the importlib name.
   Sources: PayloadsAllTheThings (SSTI/Jinja2); Python import system (__loader__/__spec__,
   importlib); functools.wraps (__wrapped__); CWE-94 / CWE-1336.

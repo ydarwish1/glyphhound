@@ -13,8 +13,8 @@ the Phase-9 acquirer reads) we read it straight from the repo. Three sources, in
    request over the tiny JSON header — never the tensors).
 
 Every read is a small metadata fetch capped at :data:`_HF_SOURCE_MAX_BYTES`; we never
-request, and never stream, the multi-GB weights (the project conventions). Pin ``revision`` to a
-commit SHA for determinism (Rule 7).
+request, and never stream, the multi-GB weights. Pin ``revision`` to a commit SHA for
+determinism.
 """
 
 from __future__ import annotations
@@ -37,7 +37,7 @@ from .models import (
 
 # A metadata file (tokenizer_config.json / chat_template.jinja / a safetensors header) is at
 # most a few MB. Capping every read here means a misconfigured or hostile host can never
-# stream the weights through this path (Rule 6); a real config never approaches this.
+# stream the weights through this path; a real config never approaches this.
 _HF_SOURCE_MAX_BYTES = 32 * 1024 * 1024
 _TIMEOUT = 30
 _USER_AGENT = "glyphhound/0.0 (+template-extraction; no-weights)"
@@ -50,9 +50,9 @@ _DEFAULT_TEMPLATE_NAME = "default"
 # Anonymous by default; if HF_TOKEN is set we send it as a bearer token (higher rate limits
 # and gated-repo access), per the owner's "env-if-set-else-anonymous" decision. Requests are
 # retried on HTTP 429 (rate limit) and 503 (transient overload) with a FIXED exponential
-# backoff (no random jitter) so a scan reproduces (Rule 7); a numeric Retry-After header is
+# backoff (no random jitter) so a scan reproduces; a numeric Retry-After header is
 # honored when present. This governs only WHETHER a metadata request is retried — never how
-# much is read, so the no-weights guarantee (Rule 6) is unchanged.
+# much is read, so the no-weights guarantee is unchanged.
 _MAX_RETRIES = 5
 _BACKOFF_BASE = 1.0
 _MAX_BACKOFF = 30.0
@@ -99,7 +99,7 @@ def _open_with_retry(req: urllib.request.Request):
     Honors a numeric ``Retry-After`` header; otherwise waits 1, 2, 4, 8, 16 s (each capped at
     :data:`_MAX_BACKOFF`). After :data:`_MAX_RETRIES` retries the final ``HTTPError``
     propagates, so the caller maps 404 -> None and any other code -> AcquireError. No
-    randomness (Rule 7); this never changes how many bytes are read (Rule 6).
+    randomness; this never changes how many bytes are read.
     """
     delay = _BACKOFF_BASE
     for attempt in range(_MAX_RETRIES + 1):
@@ -123,7 +123,7 @@ def _gated_message(url: str, code: int) -> str:
 
 def _read_capped(resp, limit: int) -> bytes:
     """Read at most ``limit`` bytes from a response (a hostile host cannot make us read
-    more than we asked for — Rule 6). Handles partial reads."""
+    more than we asked for). Handles partial reads."""
     buf = bytearray()
     while len(buf) < limit:
         chunk = resp.read(limit - len(buf))
@@ -168,8 +168,8 @@ def _http_range(url: str, start: int, length: int) -> bytes | None:
     """Range-GET ``length`` bytes of ``url`` from ``start``, or ``None`` if unavailable.
 
     Returns ``None`` on 404 or when the host will not honor the range (status != 206) —
-    rather than read the body — so a fallback safetensors read can never stream the file
-    (Rule 6). ``length`` is bounded by the caller and by :data:`_HF_SOURCE_MAX_BYTES`.
+    rather than read the body — so a fallback safetensors read can never stream the file.
+    ``length`` is bounded by the caller and by :data:`_HF_SOURCE_MAX_BYTES`.
     """
     if length <= 0:
         return b""
@@ -189,7 +189,7 @@ def _http_range(url: str, start: int, length: int) -> bytes | None:
         raise AcquireError(f"{url}: HTTP {exc.code}") from exc
     with resp:
         if resp.status != 206:
-            return None  # host ignored Range; do not read the body (no weights, Rule 6)
+            return None  # host ignored Range; do not read the body (no weights)
         return _read_capped(resp, length)
 
 
@@ -258,8 +258,8 @@ def _raw(repo: str, templates: list[ChatTemplate], bytes_fetched: int) -> RawTem
 
 def smallest_gguf_filename(repo: str, *, revision: str = "main") -> str:
     """The smallest ``.gguf`` file in ``repo`` (for the CLI ``--file auto``), via the Hub tree
-    API. A metadata-only listing (filenames + sizes), never the weights (Rule 6); the result is
-    deterministic (smallest size, ties broken by path — Rule 7) and sends HF_TOKEN if set so it
+    API. A metadata-only listing (filenames + sizes), never the weights; the result is
+    deterministic (smallest size, ties broken by path) and sends HF_TOKEN if set so it
     works on gated/private repos. Raises :class:`AcquireError` if the repo has no ``.gguf`` or
     the listing cannot be read.
     """
@@ -298,7 +298,7 @@ def read_hf_source_template(repo: str, *, revision: str = "main") -> RawTemplate
     Tries ``tokenizer_config.json`` (string or multi-template list), then
     ``chat_template.jinja``, then the ``model.safetensors`` ``__metadata__``. Raises
     :class:`TemplateNotFoundError` if none carry a template. ``revision`` should be a pinned
-    commit SHA for determinism (Rule 7).
+    commit SHA for determinism.
     """
     base_url = f"https://huggingface.co/{repo}/resolve/{revision}"
 

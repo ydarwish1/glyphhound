@@ -2,7 +2,7 @@
 
 GlyphHound was built in small, verified stages ("phases"). Each phase was finished, verified
 with real output (a flagged fixture, a schema-valid file, a measured rate), and only then was
-the next one started. Each has a `scripts/verify_phase*.py` that re-proves it. The phases are
+the next one started. Most have a `scripts/verify_phase*.py` that re-proves them. The phases are
 listed in order below.
 
 ## Stages

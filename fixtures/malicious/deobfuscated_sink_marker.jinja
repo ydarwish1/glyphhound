@@ -6,13 +6,13 @@
   only *constant* identifiers). The folded chain is:
       cycler -> __init__ -> __globals__ -> __builtins__ -> __import__('os') -> system(...)
 
-  This is GlyphHound's whole differentiator (PRD §4): the de-obfuscation pre-pass folds
+  This is GlyphHound's whole differentiator: the de-obfuscation pre-pass folds
   '__cl' + 'ass__' back to '__class__' BEFORE analysis, so the dunder chain (GH-S001) and
   the `system` code-exec name (GH-S002) become reachable — payloads a string-matcher misses.
 
   WITHOUT folding this template yields ZERO findings; WITH folding it is reachable=True.
 
-  HARMLESS (the project conventions — MARKER only):
+  HARMLESS (MARKER only):
   - The analyzer only PARSES this and walks the AST; it never renders it (and folding is a
     static AST rewrite — no string is ever evaluated or executed).
   - The "payload" is the sentinel GLYPHHOUND_PHASE4_MARKER, not a real command; if it were

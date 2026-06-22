@@ -1,0 +1,19 @@
+version: 2
+updates:
+  # Python runtime + dev dependencies (pinned in pyproject.toml).
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+  # The CI workflow's actions.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+  # The composite action's own pinned actions (action/action.yml).
+  - package-ecosystem: "github-actions"
+    directory: "/action"
+    schedule:
+      interval: "weekly"

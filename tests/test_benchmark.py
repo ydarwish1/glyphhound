@@ -1,14 +1,14 @@
 """Offline, deterministic tests for the Phase-8 head-to-head benchmark harness.
 
 The GlyphHound side + the table/summary logic are tested fully OFFLINE (no ModelAudit
-needed), so the suite stays green in any environment (the project conventions). The single
-ModelAudit-dependent test is skipped when the incumbent is not installed in the isolated
-`.venv-modelaudit` env — it runs on a machine set up for the benchmark and is skipped in a
-bare CI, never failing the suite.
+needed), so the suite stays green in any environment. The single ModelAudit-dependent
+test is skipped when the incumbent is not installed in the isolated `.venv-modelaudit`
+env — it runs on a machine set up for the benchmark and is skipped in a bare CI, never
+failing the suite.
 
-Fixture-driven (Rule 8): the committed MARKER-only payloads in benchmark/payloads/ are the
+Fixture-driven: the committed MARKER-only payloads in benchmark/payloads/ are the
 should-catch / should-not-catch set; here we assert GlyphHound's verdict on each matches the
-manifest's locked expectation, and that the payloads are MARKER-only (Rule 4).
+manifest's locked expectation, and that the payloads are MARKER-only.
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ PAYLOADS = MANIFEST["payloads"]
 MARKER = MANIFEST["marker"]
 
 # Substrings that would indicate a REAL harmful command rather than a harmless marker.
-# A Phase-8 payload simulates exploitation with the sentinel only (Rule 4).
+# A Phase-8 payload simulates exploitation with the sentinel only.
 _REAL_HARM_DENYLIST = (
     "rm -rf", "rmdir", "del /", "format ", "shutdown", "reboot",
     "curl ", "wget ", "http://", "https://", "powershell", "cmd /c",
@@ -70,7 +70,7 @@ def test_manifest_shape_and_set():
 
 
 def test_payloads_are_marker_only():
-    """Rule 4: every payload simulates exploitation with the sentinel, no real command."""
+    """Every payload simulates exploitation with the sentinel, no real command."""
     for entry in PAYLOADS:
         text = _payload_text(entry).lower()
         for bad in _REAL_HARM_DENYLIST:
@@ -85,7 +85,7 @@ def test_payloads_are_marker_only():
 def test_payload_comments_have_no_literal_sink_tokens():
     """The scanned text must not contain literal sink tokens in PROSE: ModelAudit is a text
     scanner, so a comment token would be matched as if it were the payload and would falsely
-    credit the incumbent with catches it never earned on the obfuscated code (Rule 3). Only
+    credit the incumbent with catches it never earned on the obfuscated code. Only
     payloads whose actual CODE legitimately contains a token may contain it."""
     # Tokens that, if present only in a comment, would contaminate the text scanner.
     tokens = ["__import__(", "__init__.__globals__", "__subclasses__", "|attr(", "getattr("]

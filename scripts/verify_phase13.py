@@ -1,20 +1,20 @@
 """Phase 13 verification -- constant-propagation.
 
-Offline and deterministic (the project conventions): it analyzes on-disk fixtures and the
+Offline and deterministic: it analyzes on-disk fixtures and the
 vendored benign corpus -- no network, no weights, and it never *renders* a template (only
 parses, propagates, folds, and walks the AST), so reading the malicious fixtures cannot
 execute them. Propagation is a static AST rewrite; no string is ever evaluated.
 
-Checks (the design docs G8 / the project history Phase 13 tracker -- "substitute {% set %} constant-string
+Checks (substitute {% set %} constant-string
 vars before the fold; `{% set c='__class__' %}{{ obj[c] }}` flags reachable; corpus FP
-still 0/120; Phase-1 golden byte-identical"):
+still 0/120; Phase-1 golden byte-identical):
   (a) The Phase-13 MARKER fixture yields ZERO findings WITHOUT propagation (raw walker) and
       a reachable GH-S001 chain WITH the full pipeline -- and it gates CI.
   (b) The two exposed forms work: a single variable-held dunder subscript, and propagate-
       THEN-fold of a concatenation (`'__re' + 'duce__'` -> `'__reduce__'`).
   (c) Conservative scoping introduces NO false positive: a benign const, a re-binding, a
       loop variable, a runtime-valued set, and a bare load all stay clean.
-  (d) Rule 9: the real benign corpus stays 0.00% (0/120, presence AND gating), benign
+  (d) The real benign corpus stays 0.00% (0/120, presence AND gating), benign
       fixtures 0/11 -- re-measured after the analyzer change.
 
 Run:  .venv/Scripts/python.exe scripts/verify_phase13.py
@@ -124,7 +124,7 @@ def _gating_fp(directory: str) -> tuple[int, int, int]:
 
 def verify_corpus_clean() -> bool:
     print("\n" + "=" * 78)
-    print("Phase 13 (d) -- Rule 9: corpus + benign fixtures FP-clean after propagation")
+    print("Phase 13 (d) -- corpus + benign fixtures FP-clean after propagation")
     print("=" * 78)
     n_corpus, present_corpus, gating_corpus = _gating_fp(CORPUS_DIR)
     n_benign, present_benign, gating_benign = _gating_fp(BENIGN_DIR)
@@ -133,7 +133,7 @@ def verify_corpus_clean() -> bool:
     print(f"benign  : {n_benign} fixtures  -- presence {present_benign}, gating {gating_benign}")
     ok = (n_corpus >= 100 and gating_corpus == 0 and present_corpus == 0
           and n_benign >= 10 and gating_benign == 0 and present_benign == 0)
-    print(f"[{'OK' if ok else 'FAIL'}] corpus FP 0.00% gating AND 0 presence after propagation (Rule 9).")
+    print(f"[{'OK' if ok else 'FAIL'}] corpus FP 0.00% gating AND 0 presence after propagation.")
     return ok
 
 

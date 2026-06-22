@@ -1,17 +1,17 @@
 """Stage 2 (De-obfuscator) — fold obfuscation before analysis (Phase 4).
 
-This is the *de-obfuscation* half of Stage 2 (ARCHITECTURE.md §"Stage 2"; PRD §7.2). It
-is GlyphHound's whole differentiator (PRD §4): a string-matcher sees ``'__cl' + 'ass__'``
-and misses it, so we fold the concatenation back to ``'__class__'`` **before** the Stage-3
-sink/taint walk runs. The walk's existing ``Const``-only handling then fires unchanged —
-no change to :mod:`..analyze.sinks` or :mod:`..analyze.taint` is needed.
+This is the *de-obfuscation* half of Stage 2. It is GlyphHound's whole differentiator:
+a string-matcher sees ``'__cl' + 'ass__'`` and misses it, so we fold the concatenation
+back to ``'__class__'`` **before** the Stage-3 sink/taint walk runs. The walk's existing
+``Const``-only handling then fires unchanged — no change to :mod:`..analyze.sinks` or
+:mod:`..analyze.taint` is needed.
 
-Three folds, all **static** (we never evaluate or render the template — Rule 4/Rule 6;
-the constant string operations below are computed only over string *literals* at analysis
-time, the same class of work as the concatenation fold):
+Three folds, all **static** (we never evaluate or render the template; the constant string
+operations below are computed only over string *literals* at analysis time, the same class
+of work as the concatenation fold):
 
 * **Constant string concatenation.** ``Add`` (the ``+`` operator) and ``Concat`` (the
-  Jinja ``~`` operator, PRD §2) over string ``Const`` operands collapse to a single
+  Jinja ``~`` operator) over string ``Const`` operands collapse to a single
   ``Const``. Recursive, so ``'a' + 'b' + 'c'`` folds fully. Only string constants fold —
   a non-constant or non-string operand is left untouched (``1 + 2``, ``'a' + x``).
 * **Constant string builders (Phase 10).** The same collapse for the other ways an
@@ -26,7 +26,7 @@ time, the same class of work as the concatenation fold):
   ``|strip``, and ``|reverse`` (``'__CLASS__'|lower`` -> ``'__class__'``), plus negative /
   reverse *slices* (``'__ssalc__'[::-1]`` -> ``'__class__'``; a ``-1`` step is a ``Neg`` over
   a ``Const``, which :func:`_const_int_bound` now unwraps). Each is computed over the string
-  *literal* only, so nothing dynamic is ever evaluated (Rule 4/6). Together these extend the
+  *literal* only, so nothing dynamic is ever evaluated. Together these extend the
   fold to a single, general principle: *any* expression built entirely from string ``Const``s
   through this whitelist of pure ops is reduced to its constant value before the walk.
 * **Constant string repetition + printf + cast (Phase 19).** The remaining trivial,
@@ -38,7 +38,7 @@ time, the same class of work as the concatenation fold):
   ``Const`` operands only; ``Mul`` is bounded by ``_MAX_FOLDED_LEN`` *before* it computes and a
   printf width ``>= _MAX_FOLDED_LEN`` (and an arg-supplied ``%*s`` width) is rejected, so a
   pathological ``'x' * 10**9`` / ``'%999999s'`` / ``'%*s' % (10**9, 'x')`` cannot allocate a
-  giant transient at analysis time (Rule 7). NOT folded here (a known residual, future work):
+  giant transient at analysis time. NOT folded here (a known residual, future work):
   pure-constant **container selection** — list/tuple/dict index, ``|first``/``|last`` —
   (``['__init__'][0]``) and ``namespace(c=...).c`` attribute propagation. A *bare-literal*
   container form leaves the identifier visible to a string-matcher, but a *split* one
@@ -59,14 +59,14 @@ a variable (``{% set c = '__class__' %}{{ x[c] }}``) is exposed to the same ``Co
 It runs *between* two folds (fold -> propagate -> fold) so a value built by concatenation folds
 first and a substitution that re-creates a concatenation folds after. It is conservative
 (a name is propagated only when every binding of it is the same constant ``{% set %}``) and
-constant-only — never evaluated or rendered (Rule 4/6). See :func:`_propagate_constants`.
+constant-only — never evaluated or rendered. See :func:`_propagate_constants`.
 
 The "is this name dangerous?" catalog is **passed in** (``dangerous_names``) rather than
 imported, so this Stage-2 module has no dependency on Stage-3 — it stays a pure leaf and
 there is no parse <-> analyze import cycle. The caller (``analyze.sinks.analyze_template``)
 supplies ``DANGEROUS_DUNDERS | CODE_EXEC_NAMES``.
 
-Determinism (Rule 7): a single post-order rewrite of a *copy* of the AST; same template ->
+Determinism: a single post-order rewrite of a *copy* of the AST; same template ->
 same normalized tree. The original AST is never mutated, so the Phase-1 golden (dumped from
 ``parse_template``) is unaffected.
 """
@@ -123,7 +123,7 @@ def _propagate_constants(root: nodes.Node, applied: list[str]) -> nodes.Node:
     *same* value — so a loop variable, a macro/``with`` parameter, a ``{% set %}…{% endset %}``
     block, a tuple-unpack target, or any re-binding to a non-constant (or a different
     constant) drops the name entirely. Constant-only: no expression is evaluated and nothing
-    is rendered (Rule 4/6). Loads are replaced by a ``Const``; the ``{% set %}`` statement is
+    is rendered. Loads are replaced by a ``Const``; the ``{% set %}`` statement is
     left in place (harmless — a ``Const`` value is never an identifier the walk inspects).
     """
     env = _constant_set_env(root)
@@ -243,7 +243,7 @@ def _fold_string_concat(node: nodes.Node, applied: list[str]) -> nodes.Const | N
 
 
 # A folded constant longer than this is never a hidden identifier; rejecting it bounds
-# analysis-time work against a pathological `'{:>9999999}'.format('x')` (Rule 7).
+# analysis-time work against a pathological `'{:>9999999}'.format('x')`.
 _MAX_FOLDED_LEN = 4096
 
 
@@ -289,7 +289,7 @@ def _format_has_only_simple_fields(fmt: str) -> bool:
     """True only if every ``str.format`` field is a plain substitution — no attribute (``.``)
     or item (``[``) access, and no nested field in the format spec.
 
-    This is a safety gate (Rule 4/6): ``'{0.__class__.__init__.__globals__}'.format(x)`` would
+    This is a safety gate: ``'{0.__class__.__init__.__globals__}'.format(x)`` would
     make ``str.format`` *traverse attributes* at analysis time. We only ever want to fold the
     identifier-assembly forms an evader actually uses (``'{}{}'.format('__cl', 'ass__')``), so a
     format string that reaches into an object is left unfolded rather than evaluated.
@@ -312,8 +312,8 @@ def _fold_const_string_op(node: nodes.Node, applied: list[str]) -> nodes.Const |
 
     Children are already folded (post-order), so an operand that was itself a concatenation
     is already a ``Const`` here. Every operand must be constant: we compute the result over
-    string literals only and never evaluate a dynamic expression or render anything
-    (Rule 4/6). Each builder is the way a string-matcher-evading template assembles an
+    string literals only and never evaluate a dynamic expression or render anything.
+    Each builder is the way a string-matcher-evading template assembles an
     identifier without writing it literally.
     """
     # 'str' * n  (repetition) — bounded before it computes (Phase 19)
@@ -386,7 +386,7 @@ def _fold_string_mul(node: nodes.Mul, applied: list[str]) -> nodes.Const | None:
 
     The multiplier * length is checked against ``_MAX_FOLDED_LEN`` BEFORE computing, so a
     pathological ``'x' * 10**9`` is rejected without allocating a giant transient string
-    (Rule 7) — never an identifier anyway. A non-positive count yields ``''`` (harmless)."""
+    — never an identifier anyway. A non-positive count yields ``''`` (harmless)."""
     for s_node, n_node in ((node.left, node.right), (node.right, node.left)):
         if (isinstance(s_node, nodes.Const) and isinstance(s_node.value, str)
                 and isinstance(n_node, nodes.Const) and isinstance(n_node.value, int)
@@ -420,7 +420,7 @@ def _fold_string_mod(node: nodes.Mod, applied: list[str]) -> nodes.Const | None:
 
 def _fold_format_filter(node: nodes.Filter, applied: list[str]) -> nodes.Const | None:
     """The Jinja ``|format`` filter == printf: ``'%s%s'|format('a','b')`` -> ``'%s%s' % ('a','b')``.
-    Folds only when the format string and every argument are constants (Rule 4/6)."""
+    Folds only when the format string and every argument are constants."""
     if node.dyn_args is not None or node.dyn_kwargs is not None or node.kwargs:
         return None
     if not (isinstance(node.node, nodes.Const) and isinstance(node.node.value, str)):
@@ -434,7 +434,7 @@ def _fold_format_filter(node: nodes.Filter, applied: list[str]) -> nodes.Const |
 def _apply_printf(node: nodes.Node, fmt: str, args: object, note: str,
                   applied: list[str]) -> nodes.Const | None:
     """Compute ``fmt % args`` over constants, guarding width and exceptions. Two width guards
-    BEFORE the format runs so a pathological width never allocates a giant transient (Rule 7):
+    BEFORE the format runs so a pathological width never allocates a giant transient:
     (1) an arg-supplied width/precision (``%*s`` / ``%.*f`` — the width comes from an argument,
     not the format string, so a digit scan cannot bound it) is refused outright; a dynamic
     width is never part of a hidden identifier, so this costs no detection. (2) any literal
@@ -511,7 +511,7 @@ def _fold_replace(node: nodes.Filter, applied: list[str]) -> nodes.Const | None:
 # name behind a non-matching literal — case folds, whitespace strip, and reverse. `trim`/`strip`
 # strip whitespace (the no-argument form); `reverse` of a string is `s[::-1]` (matches Jinja's
 # `do_reverse`). Folding fires only when the operand is a `Const` string, so nothing dynamic is
-# ever evaluated (Rule 4/6). Closes the `''['__CLASS__'|lower]` case-fold bypass.
+# ever evaluated. Closes the `''['__CLASS__'|lower]` case-fold bypass.
 _STRING_TRANSFORM_FILTERS = {
     "lower": str.lower,
     "upper": str.upper,
@@ -534,7 +534,7 @@ def _fold_string_transform(node: nodes.Filter, applied: list[str]) -> nodes.Cons
     bottom-up. Only the no-argument forms fold: a transform carrying an argument (or any
     keyword/splat) is left as a filter for taint to handle, mirroring the project's rule that
     only *pure-constant* builds are normalized and dynamic ones are not. Computes over the
-    string literal only — nothing is evaluated or rendered (Rule 4/6).
+    string literal only — nothing is evaluated or rendered.
     """
     fn = _STRING_TRANSFORM_FILTERS.get(node.name)
     if fn is None:

@@ -1,25 +1,25 @@
-"""Phase 8 verification — head-to-head benchmark vs ModelAudit (the design docs row 8).
+"""Phase 8 verification -- head-to-head benchmark vs ModelAudit.
 
-The phase gate: prove the project's ONE defensible claim with MEASURED output (Rule 2),
-honestly (Rule 3). Like verify_phase0 (which needs network + Ollama), this verifier needs
+The phase gate: prove the project's ONE defensible claim with MEASURED output,
+honestly. Like verify_phase0 (which needs network + Ollama), this verifier needs
 ModelAudit installed in the isolated `.venv-modelaudit` env (the offline guarantee covers
 pytest + verify_phase1..7, which stay green without it). It runs BOTH tools over the same
 GGUF artifacts and asserts:
 
   (a) GlyphHound catches EVERY malicious payload, including all obfuscated ones (100%).
-  (b) GlyphHound has ZERO false positives on the benign controls (Rule 9, no regression).
+  (b) GlyphHound has ZERO false positives on the benign controls (no regression).
   (c) ModelAudit catches the PLAIN control (un-obfuscated chain) -> it is invoked FAIRLY,
-      not crippled; a miss there would mean a broken/limited invocation (Rule 3).
+      not crippled; a miss there would mean a broken/limited invocation.
   (d) ModelAudit has ZERO false positives on the benign controls (it is a real, fair tool).
   (e) The CORE CLAIM is substantiated: there is >=1 obfuscation GlyphHound catches that
       ModelAudit MISSES (measured, not asserted).
   (f) Live results match the manifest's measured-then-LOCKED *_expected for every payload,
       at the pinned ModelAudit version (so the recorded table is the real one; catches both
       version drift and accidental comment-token contamination of the scanned text).
-  (g) Determinism: two independent benchmark runs yield a byte-identical table (Rule 7).
+  (g) Determinism: two independent benchmark runs yield a byte-identical table.
 
 Run:  .venv/Scripts/python.exe scripts/verify_phase8.py
-Exit code is non-zero if any check fails (cp1252 consoles may mojibake glyphs — judge by
+Exit code is non-zero if any check fails (cp1252 consoles may mojibake glyphs -- judge by
 [OK]/[FAIL] + exit code, not console rendering).
 """
 
@@ -101,7 +101,7 @@ def main() -> int:
     checks.append(("(c) ModelAudit catches the PLAIN control (fair invocation proof)", ma_plain_ok))
 
     # (c2) ModelAudit's optional dynamic sandbox-render test is ACTIVE (jinja2 importable) ->
-    # we benchmark its STRONGEST config, not a regex-only crippled one (Rule 3). Checked
+    # we benchmark its STRONGEST config, not a regex-only crippled one. Checked
     # deterministically (jinja2 present), NOT via a render catch (that worker is timing-
     # dependent and non-deterministic -- see benchmark/README.md).
     ma_sandbox_active = bench.modelaudit_sandbox_render_available(exe)
@@ -135,7 +135,7 @@ def main() -> int:
     rows2 = bench.run_benchmark(exe, manifest)
     table1 = bench.format_table(rows, modelaudit_version_str=live_version)
     table2 = bench.format_table(rows2, modelaudit_version_str=live_version)
-    checks.append(("(g) Determinism: two runs produce a byte-identical table (Rule 7)",
+    checks.append(("(g) Determinism: two runs produce a byte-identical table",
                    table1 == table2))
 
     print()

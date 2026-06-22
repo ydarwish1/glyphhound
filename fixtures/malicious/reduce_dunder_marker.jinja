@@ -6,7 +6,7 @@
   template never needs. The Phase-2..11 catalog did not list them, so this chain is MISSED;
   Phase 12 adds them to DANGEROUS_DUNDERS (GH-S001, CWE-94) and each access becomes reachable.
 
-  HARMLESS (the project conventions — MARKER only): the analyzer only PARSES this and walks the
+  HARMLESS (MARKER only): the analyzer only PARSES this and walks the
   AST; it never renders it. These are bare attribute ACCESSES — even if rendered they invoke
   no command; the dangerous SIGNAL is reaching the serialization dunders themselves, not the
   harmless 'obj'/'state' identifiers.

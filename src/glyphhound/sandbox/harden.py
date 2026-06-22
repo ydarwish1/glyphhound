@@ -17,11 +17,11 @@ backstops that only exist on Linux, layered UNDER that audit hook inside the chi
     *kernel* backstop for the case where a payload reaches a syscall WITHOUT going through an
     audited Python call (e.g. via an already-loaded C extension).
 
-Everything here is a NO-OP off Linux, so the Windows / static pipeline is byte-identical
-(the project conventions). Nothing here ever raises into the render path: each step degrades to
-"not applied" and is recorded as evidence (Rule 5 — ship the containment we can prove; the
-audit hook + subprocess boundary remain even if a backstop is unavailable). MARKER-only
-context is rendered (Rule 4); no weights are ever loaded (Rule 6).
+Everything here is a NO-OP off Linux, so the Windows / static pipeline is byte-identical.
+Nothing here ever raises into the render path: each step degrades to "not applied" and is
+recorded as evidence — ship the containment we can prove; the audit hook + subprocess
+boundary remain even if a backstop is unavailable. MARKER-only context is rendered; no
+weights are ever loaded.
 
 Honest scope: the seccomp filter is added for the NATIVE (x86_64) ABI — the ABI CPython uses
 — and is a *backstop* to the primary, cross-ABI audit hook; it is not a complete syscall

@@ -1,13 +1,13 @@
 """Offline, deterministic tests for the Stage-4 sandbox confirmer (Phase 6).
 
-Fixture-driven (the project conventions): an exploitable MARKER fixture that, when RENDERED
+Fixture-driven: an exploitable MARKER fixture that, when RENDERED
 inside the locked-down subprocess, reaches code execution and writes a sentinel (->
 confirmed=True), and two containment probes whose blocked-syscall attempts prove the
-sandbox contains. The benign corpus must never confirm (Rule 9). This is the ONLY stage
+sandbox contains. The benign corpus must never confirm. This is the ONLY stage
 that renders a template, and it does so ONLY in a contained child process — never here in
 the test (main) process.
 
-The checks of the design docs row 6 / the project history Phase-6 tracker are covered:
+The checks for the sandbox confirmer are covered:
   (a) the MARKER fixture, run through the contained confirmer, yields confirmed=True;
   (b) the CONTAINMENT probes prove a real syscall attempt (out-of-scratch write / network
       connect) is BLOCKED, with no out-of-scratch side effect, and the scratch is cleaned;
@@ -180,7 +180,7 @@ def test_scratch_dir_is_cleaned_up():
     assert result.cleaned_up is True
 
 
-# --- (c) benign + real attacker payloads never confirm (Rule 9) -----------------
+# --- (c) benign + real attacker payloads never confirm --------------------------
 
 def test_benign_template_is_not_confirmed():
     result = confirm_template(BENIGN)

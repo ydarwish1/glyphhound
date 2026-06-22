@@ -1,19 +1,19 @@
-"""Phase 6 verification — Stage-4 sandbox confirmer (gated) + containment proof.
+"""Phase 6 verification -- Stage-4 sandbox confirmer (gated) + containment proof.
 
 This is the ONE stage that renders a template, and it renders ONLY inside a locked-down
-subprocess (never this process). The script is offline and deterministic (the project conventions): the network containment probe is blocked before any OS connect is issued, and a
+subprocess (never this process). The script is offline and deterministic: the network containment probe is blocked before any OS connect is issued, and a
 confirmed result is decided by an observable sentinel file, not by timing. No model weights
-are ever loaded (Rule 6); MARKER payloads only (Rule 4).
+are ever loaded; MARKER payloads only.
 
-Checks (the design docs row 6 / the project history Phase-6 tracker — "render in locked-down subprocess
+Checks (render in locked-down subprocess
 with MARKER: marker fires for known-exploitable fixture; sandbox BLOCKS a real syscall
-attempt (containment proven)"):
+attempt (containment proven)):
   (a) the exploitable MARKER fixture, run through the contained confirmer, yields
       confirmed=True (the sentinel was written in the scratch dir, in a separate process);
   (b) CONTAINMENT is proven: an out-of-scratch write AND an outbound network connect are
       both BLOCKED inside the sandbox, with no out-of-scratch side effect, and the scratch
       dir is cleaned up afterwards;
-  (c) no false confirmations (Rule 9): a benign template, the real benign corpus, and a
+  (c) no false confirmations: a benign template, the real benign corpus, and a
       real os.system attacker payload all yield confirmed != True;
   (d) with the sandbox OFF, the static pipeline + reports are unchanged (confirmed stays
       None and all three rendered reports are byte-identical to the static path), and
@@ -68,7 +68,7 @@ def _jinja_files(directory: str) -> list[str]:
 
 def verify_marker_fires() -> bool:
     print("=" * 78)
-    print("Phase 6 (a) — the MARKER fixture is CONFIRMED by the contained render")
+    print("Phase 6 (a) -- the MARKER fixture is CONFIRMED by the contained render")
     print("=" * 78)
     text = _read(MARKER_FIXTURE)
     result = confirm_template(text)
@@ -98,7 +98,7 @@ def verify_marker_fires() -> bool:
 
 def verify_containment() -> bool:
     print("\n" + "=" * 78)
-    print("Phase 6 (b) — CONTAINMENT proven: a real syscall attempt is BLOCKED")
+    print("Phase 6 (b) -- CONTAINMENT proven: a real syscall attempt is BLOCKED")
     print("=" * 78)
     fs = confirm_template(_read(FS_PROBE_FIXTURE))
     fs_blocked = any("write" in e for e in fs.blocked_events)
@@ -124,13 +124,13 @@ def verify_containment() -> bool:
 
 def verify_no_false_confirmations() -> bool:
     print("\n" + "=" * 78)
-    print("Phase 6 (c) — no false confirmations: benign + real corpus + attacker payload")
+    print("Phase 6 (c) -- no false confirmations: benign + real corpus + attacker payload")
     print("=" * 78)
     simple = confirm_template(BENIGN)
     simple_ok = simple.confirmed is not True
     print(f"[{'OK' if simple_ok else 'FAIL'}]   trivial benign template: confirmed={simple.confirmed}")
 
-    # The real os.system payload cannot run — process spawn is blocked (contained, not confirmed).
+    # The real os.system payload cannot run -- process spawn is blocked (contained, not confirmed).
     attacker = confirm_template(_read(CVE_FIXTURE))
     attacker_blocked = any(("spawn" in e or "system" in e) for e in attacker.blocked_events)
     attacker_ok = attacker.confirmed is False and attacker_blocked
@@ -151,13 +151,13 @@ def verify_no_false_confirmations() -> bool:
     print(f"\nFalse confirmations on the real benign corpus: {false_confirms}/{len(files)} ({rate:.1%}).")
 
     ok = simple_ok and attacker_ok and false_confirms == 0 and len(files) >= 10
-    print(f"[{'OK' if ok else 'FAIL'}] nothing benign is confirmed (Rule 9).")
+    print(f"[{'OK' if ok else 'FAIL'}] nothing benign is confirmed.")
     return ok
 
 
 def verify_sandbox_off_unchanged() -> bool:
     print("\n" + "=" * 78)
-    print("Phase 6 (d) — sandbox OFF leaves the static pipeline + reports unchanged")
+    print("Phase 6 (d) -- sandbox OFF leaves the static pipeline + reports unchanged")
     print("=" * 78)
     text = _read(MARKER_FIXTURE)
     off = scan_template_string(text)                  # confirm defaults to OFF

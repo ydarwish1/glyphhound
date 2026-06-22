@@ -8,7 +8,7 @@
   onto a benign attribute -> REPORTED (presence); builtins.open reaches the code-exec name `open`
   through the base, so that access is reachable too.
 
-  HARMLESS (the project conventions — MARKER only): parsed + walked, never rendered; nothing opens a
+  HARMLESS (MARKER only): parsed + walked, never rendered; nothing opens a
   file or spawns a process. The GLYPHHOUND_PHASE12_*_MARKER sentinels are harmless strings.
   Sources: PayloadsAllTheThings / PortSwigger SSTI (open/builtins reach, pty.spawn); CWE-94 / CWE-1336.
 -#}

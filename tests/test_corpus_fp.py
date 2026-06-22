@@ -1,8 +1,8 @@
 """Offline tests for the Phase-7 benign FP corpus + measured false-positive rate.
 
 The vendored corpus (``corpus/templates/*.jinja`` + ``corpus/PROVENANCE.json``) is the
->=100-template, SHA-pinned, deduped set the analyzer's false-positive rate is measured on
-(PRD §7.6/§8, Rule 9). These tests run fully offline: they only *parse* each real template
+>=100-template, SHA-pinned, deduped set the analyzer's false-positive rate is measured on.
+These tests run fully offline: they only *parse* each real template
 (``analyze_template`` — parse -> de-obfuscate -> walk), never *render* one, so reading the
 corpus cannot execute anything, and they load no weights (the build did the range-fetch).
 
@@ -29,7 +29,7 @@ TEMPLATES_DIR = os.path.join(CORPUS_DIR, "templates")
 PROVENANCE_PATH = os.path.join(CORPUS_DIR, "PROVENANCE.json")
 
 MIN_REQUIRED = 100
-NO_WEIGHTS_THRESHOLD = 0.10  # matches RawTemplate.assert_no_weights_loaded default (Rule 6)
+NO_WEIGHTS_THRESHOLD = 0.10  # matches RawTemplate.assert_no_weights_loaded default
 
 
 def _provenance() -> list[dict]:
@@ -56,7 +56,7 @@ def test_corpus_templates_are_all_distinct():
 
 @pytest.mark.parametrize("entry", _provenance(), ids=lambda e: e["model"])
 def test_vendored_bytes_match_the_pin(entry):
-    # Reproducibility (Rule 7): the committed file's bytes hash to the recorded pin.
+    # Reproducibility: the committed file's bytes hash to the recorded pin.
     path = os.path.join(TEMPLATES_DIR, entry["file"])
     digest = hashlib.sha256(_read(path).encode("utf-8")).hexdigest()
     assert digest == entry["template_sha256"]
@@ -64,14 +64,14 @@ def test_vendored_bytes_match_the_pin(entry):
 
 @pytest.mark.parametrize("entry", _provenance(), ids=lambda e: e["model"])
 def test_no_weights_were_loaded(entry):
-    # Rule 6: only the metadata header was read, never the weights.
+    # Only the metadata header was read, never the weights.
     assert entry["bytes_fetched"] < entry["total_size"]
     assert entry["bytes_fetched"] / entry["total_size"] < NO_WEIGHTS_THRESHOLD
 
 
 @pytest.mark.parametrize("entry", _provenance(), ids=lambda e: e["model"])
 def test_real_template_is_not_a_false_positive(entry):
-    # The Rule-9 gate: a benign real template must NOT gate CI (no reachable sink).
+    # The benign-corpus gate: a benign real template must NOT gate CI (no reachable sink).
     path = os.path.join(TEMPLATES_DIR, entry["file"])
     report = make_report(analyze_template(_read(path)))
     gating = [f for f in report.findings if f.reachable is True]

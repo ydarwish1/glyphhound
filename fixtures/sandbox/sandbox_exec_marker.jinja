@@ -13,9 +13,9 @@
   INSIDE the sandbox's temp scratch dir (an allowed write). The confirmer observes that
   file and sets Finding.confirmed=True — proof that code execution was actually reached.
 
-  HARMLESS (the project conventions — MARKER only):
+  HARMLESS (MARKER only):
   - The "payload" writes a sentinel file in a throwaway scratch dir; it is NOT a real or
-    destructive command. No weights are ever loaded (Rule 6).
+    destructive command. No weights are ever loaded.
   - Statically this is a genuine sink: the dunder chain flags reachable GH-S001, so the
     static pipeline already treats it as malicious; the sandbox merely CONFIRMS it.
 -#}

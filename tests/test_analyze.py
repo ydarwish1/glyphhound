@@ -1,9 +1,9 @@
 """Offline, deterministic tests for the Stage-3 analyzer (Phase 2 — sink baseline).
 
-Fixture-driven (the project conventions): a CVE-2024-34359 MARKER template that *must*
-flag, and the real benign corpus that must stay clean (Rule 9 — false positives
-measured on real templates). The analyzer only parses + walks the AST; it never
-renders a template, so reading the malicious fixtures here cannot execute anything.
+Fixture-driven: a CVE-2024-34359 MARKER template that *must* flag, and the real benign
+corpus that must stay clean (false positives measured on real templates). The analyzer
+only parses + walks the AST; it never renders a template, so reading the malicious
+fixtures here cannot execute anything.
 
 Phase 2 is the STRING/structural baseline: it flags the presence of §4 sink patterns
 by inspecting AST *identifier* nodes (Name / Getattr.attr / Getitem key / Filter).
@@ -57,7 +57,7 @@ def test_attr_filter_pivot_fixture_is_flagged():
     assert "GH-S001" in {f.rule_id for f in findings}
 
 
-# --- the benign corpus must stay clean (Rule 9 false-positive gate) -------------
+# --- the benign corpus must stay clean (false-positive gate) --------------------
 
 def test_corpus_has_at_least_ten_templates():
     assert len(_corpus_files()) >= 10
@@ -134,7 +134,7 @@ def test_finding_carries_source_line_and_evidence():
     assert "__globals__" in findings[0].evidence
 
 
-# --- determinism (Rule 7) -------------------------------------------------------
+# --- determinism ----------------------------------------------------------------
 
 def test_findings_are_deterministic():
     src = _read(os.path.join(MALICIOUS_DIR, "cve_2024_34359_marker.jinja"))
@@ -197,7 +197,7 @@ def test_finding_is_frozen_and_hashable():
 # an attribute/subscript/|attr chain that climbs from a real base object (any Name,
 # incl. the Jinja gadgets, or a literal) through a dunder / onto a code-exec name /
 # via a reflection call. Phase 3 only ANNOTATES findings (sets `reachable`); it never
-# changes the Phase-2 finding set, so the Rule-9 0/11 FP gate holds by construction.
+# changes the Phase-2 finding set, so the 0/11 FP gate holds by construction.
 
 REACHABLE_FIXTURE = os.path.join(MALICIOUS_DIR, "reachable_sink_marker.jinja")
 
@@ -356,7 +356,7 @@ def test_obfuscated_getattr_is_upgraded_to_dunder_finding():
 
 
 def test_tilde_concat_is_folded():
-    # Jinja's ~ string-concat operator (PRD §2: |attr('__cl'~'ass__')) folds too.
+    # Jinja's ~ string-concat operator (|attr('__cl'~'ass__')) folds too.
     findings = analyze_template("{{ x['__cl' ~ 'ass__'] }}")
     assert any(f.rule_id == "GH-S001" and f.reachable for f in findings)
 

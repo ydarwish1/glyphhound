@@ -13,7 +13,7 @@ class RangeUnsupportedError(AcquireError):
     """A remote host would not honor an HTTP range request.
 
     Raised *before* reading the response body, so we never fall back to
-    downloading the full file (the project conventions).
+    downloading the full file.
     """
 
 
@@ -61,7 +61,7 @@ class RawTemplate:
     named, so a malicious named template cannot hide from the analyzer.
     ``bytes_fetched`` is how many bytes we actually read from the source;
     ``total_size`` is the full size of the model file (the weights we did *not*
-    read). The Stage-1 invariant is ``bytes_fetched << total_size`` (Rule 6).
+    read). The Stage-1 invariant is ``bytes_fetched << total_size``.
     """
 
     source_ref: str
@@ -94,7 +94,7 @@ class RawTemplate:
         return self.bytes_fetched / self.total_size if self.total_size else 1.0
 
     def assert_no_weights_loaded(self, threshold: float = 0.10) -> "RawTemplate":
-        """Enforce the Stage-1 invariant ``bytes_fetched << total_size`` (Rule 6).
+        """Enforce the Stage-1 invariant ``bytes_fetched << total_size``.
 
         Raises :class:`WeightsLoadedError` if we read at least ``threshold`` of the
         file (default 10%) — a sign we may have read into the weights. Returns

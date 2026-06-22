@@ -5,7 +5,7 @@ reference (local file / ``.gguf`` URL / Hugging Face repo / Ollama name), extrac
 template (default + named) without loading weights, analyzes each, and tags findings by
 template name. These tests drive each source type with the synthetic fixtures
 (``build_gguf`` / ``RangeServer`` / ``write_ollama_model``) so the whole suite stays offline
-and deterministic (the project conventions) — real-model / no-weights verification lives in
+and deterministic — real-model / no-weights verification lives in
 ``scripts/verify_phase9.py``.
 
 The headline (ARCHITECTURE.md §7 payoff): a sink hidden in a *named* template variant is
@@ -27,7 +27,7 @@ from synthetic import RangeServer, build_gguf, write_ollama_model
 
 ROOT = os.path.dirname(os.path.dirname(__file__))
 
-# Reuse the committed MARKER fixture (the project conventions — marker only, never a real
+# Reuse the committed MARKER fixture (marker only, never a real
 # payload): a public SSTI gadget chain that the analyzer flags reachable.
 MALICIOUS = open(
     os.path.join(ROOT, "fixtures", "malicious", "reachable_sink_marker.jinja"),
