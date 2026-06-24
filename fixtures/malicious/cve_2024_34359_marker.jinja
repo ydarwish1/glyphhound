@@ -1,0 +1,17 @@
+{#-
+  MARKER FIXTURE - simulates CVE-2024-34359 (llama-cpp-python load-time RCE).
+  Advisory: https://github.com/abetlen/llama-cpp-python/security/advisories/GHSA-56xg-wfcc-g829
+
+  This is the classic Jinja2 SSTI / sandbox-escape chain a malicious chat template
+  uses to reach code execution the instant a runtime renders it. It is HARMLESS here:
+  - GlyphHound's Stage-3 analyzer only PARSES this and walks the AST; it never renders
+    it - MARKER payloads only, no working exploit committed.
+  - The "payload" is the sentinel string GLYPHHOUND_MARKER, not a real command;
+    if it were ever executed it would try to run a nonexistent command and do nothing.
+
+  The dangerous SIGNAL the analyzer must catch is the dunder attribute chain
+  (__init__ -> __globals__ -> __builtins__ -> __import__) plus the os.system code-exec
+  name - not the harmless 'os'/marker string literals.
+-#}
+{% for m in messages %}{{ m.role }}: {{ m.content }}
+{% endfor %}{{ self.__init__.__globals__.__builtins__.__import__('os').system('GLYPHHOUND_MARKER') }}

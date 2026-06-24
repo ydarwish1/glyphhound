@@ -1,0 +1,15 @@
+{#-
+  MARKER FIXTURE - Phase 12 Catalog++: the ATTRIBUTE-INTERCEPTION / CALLABLE dunder family.
+  __getattribute__ dodges dot-access detection by fetching any attribute by name through the
+  object's own machinery; __call__ invokes a callable obtained from a gadget chain. Both are
+  obfuscation pivots a chat template never needs. The Phase-2..11 catalog did not list them,
+  so this is MISSED; Phase 12 adds them to DANGEROUS_DUNDERS (GH-S001, CWE-94) and each
+  access becomes reachable. (The string argument is a Const - never inspected, the identifier-only
+  FP-killer - so the SIGNAL is the dunder, not the harmless 'name'/marker literals.)
+
+  HARMLESS (MARKER only): parsed + walked, never rendered. The marker
+  sentinel GLYPHHOUND_CALL_MARKER is a harmless string, not a real command.
+  Sources: PayloadsAllTheThings (SSTI/Jinja2 __getattribute__/__call__ pivots); CWE-94 / CWE-1336.
+-#}
+{% for m in messages %}{{ m.role }}: {{ m.content }}
+{% endfor %}{{ obj.__getattribute__(name) }}{{ gadget.__call__('GLYPHHOUND_CALL_MARKER') }}

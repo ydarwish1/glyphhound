@@ -1,0 +1,22 @@
+# Normalize line endings for source and docs to LF (avoids CRLF churn across platforms).
+*.py    text eol=lf
+*.md    text eol=lf
+*.toml  text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+*.cfg   text eol=lf
+*.ini   text eol=lf
+*.txt   text eol=lf
+
+# Vendored / data files: preserve bytes exactly. The corpus, fixtures and SARIF schema are
+# pinned by sha256 / used as golden values, so their bytes (including line endings) must not
+# be rewritten by line-ending normalization. (READMEs under those dirs are ordinary docs and
+# are normalized by the *.md rule above.)
+*.jinja    -text
+*.json     -text
+schemas/** -text
+
+# Binary model/data blobs (never committed, but be explicit).
+*.gguf        binary
+*.bin         binary
+*.safetensors binary

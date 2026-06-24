@@ -1,0 +1,13 @@
+{#-
+  MARKER FIXTURE - Phase 10: dunder/code-exec names built by the |join filter.
+  Each dangerous identifier is split across a constant list and rejoined (`['__in','it__']
+  |join`), so it never appears whole. The Phase-10 de-obfuscator folds each constant |join
+  back to the identifier, so the unchanged sink walk fires:
+  cycler -> __init__ -> __globals__ -> __builtins__ -> __import__ -> system.
+
+  HARMLESS (MARKER only): parsed + walked, never rendered. The
+  "payload" is the sentinel GLYPHHOUND_JOIN_MARKER. WITHOUT folding: 0 findings;
+  WITH folding: a reachable GH-S001 (+ GH-S002) chain.
+-#}
+{% for m in messages %}{{ m.role }}: {{ m.content }}
+{% endfor %}{{ cycler[['__in','it__']|join][['__glo','bals__']|join][['__buil','tins__']|join][['__im','port__']|join]('os')[['sys','tem']|join]('GLYPHHOUND_JOIN_MARKER') }}

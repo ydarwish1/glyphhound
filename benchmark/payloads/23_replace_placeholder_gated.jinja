@@ -1,0 +1,7 @@
+{#- MARKER-only Phase-10 benchmark payload. Each dangerous name is hidden behind placeholder
+    characters restored with the |replace filter (no whole token in the text), inside the
+    per-message loop (off the empty-context render path). GlyphHound folds the constant |replace;
+    ModelAudit's regex sees no whole token, its empty render skips the loop body, its static
+    probe is Const-only. Sentinel only; comment free of literal sink tokens. -#}
+{% for m in messages %}{{ m.role }}: {{ m.content }}{{ cycler['__QQQQ__'|replace('QQQQ','init')]['__QQQQQQQ__'|replace('QQQQQQQ','globals')]['__QQQQQQQQ__'|replace('QQQQQQQQ','builtins')]['__QQQQQQ__'|replace('QQQQQQ','import')]('os')['sQQtem'|replace('QQ','ys')]('GLYPHHOUND_BENCH_MARKER') }}
+{% endfor %}

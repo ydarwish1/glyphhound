@@ -1,0 +1,19 @@
+{#-
+  CONTAINMENT PROBE - Phase 18: proves the sandbox BLOCKS a HARDLINK escape.
+  A path-based out-of-scratch check (even one that resolves symlinks via realpath) cannot
+  see a hardlink: a hardlink is just a second directory entry for the SAME inode, carrying
+  no symbolic-link signal, so realpath of an in-scratch hardlink stays "inside scratch".
+  This probe uses the SAME SSTI escape to reach the builtin __import__, imports `os`, and
+  tries to hardlink the injected OUT-OF-scratch `outside` path to the in-scratch `sentinel`
+  name - which, if allowed, would let a later open(sentinel,'w') mutate the outside file:
+      __builtins__['__import__']('os').link(outside, sentinel)   [BLOCKED]
+
+  The Phase-18 audit-hook policy DENIES os.link / os.symlink / os.rename outright (a
+  contained render never needs to alias files), so the link is never created and the
+  out-of-scratch inode is never aliased. The containment test asserts the attempt was
+  blocked AND no out-of-scratch side effect occurred.
+
+  HARMLESS (MARKER only): no link is created, no file is written, no
+  weights are loaded.
+-#}
+{{ cycler.__init__.__globals__.__builtins__['__import__']('os').link(outside, sentinel) }}

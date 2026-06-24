@@ -1,0 +1,123 @@
+[
+  {
+    "model": "Qwen/Qwen2.5-0.5B-Instruct-GGUF",
+    "revision": "9217f5db79a29953eb74d5343926648285ec7e67",
+    "filename": "qwen2.5-0.5b-instruct-q2_k.gguf",
+    "file": "Qwen__Qwen2.5-0.5B-Instruct-GGUF.jinja",
+    "template_sha256": "d5495a1e5db0611132a97e46a65dbb64a642a499421228b9c8b93229097fa9a4",
+    "template_chars": 2509,
+    "bytes_fetched": 6291456,
+    "total_size": 415182688,
+    "fraction_fetched": 0.015153
+  },
+  {
+    "model": "bartowski/Hermes-3-Llama-3.2-3B-GGUF",
+    "revision": "aa0b91e1dd59f2fb0d9bf8cda7e167b86b8655a2",
+    "filename": "Hermes-3-Llama-3.2-3B-IQ2_M.gguf",
+    "file": "bartowski__Hermes-3-Llama-3.2-3B-GGUF.jinja",
+    "template_sha256": "58c1a1f04baa7adaeaba1f90267c3d57d9396f0c1f0129bdde9e76d3c6784af7",
+    "template_chars": 291,
+    "bytes_fetched": 8388608,
+    "total_size": 1229028448,
+    "fraction_fetched": 0.006825
+  },
+  {
+    "model": "bartowski/Llama-3.2-1B-Instruct-GGUF",
+    "revision": "067b946cf014b7c697f3654f621d577a3e3afd1c",
+    "filename": "Llama-3.2-1B-Instruct-IQ3_M.gguf",
+    "file": "bartowski__Llama-3.2-1B-Instruct-GGUF.jinja",
+    "template_sha256": "5816fce10444e03c2e9ee1ef8a4a1ea61ae7e69e438613f3b17b69d0426223a4",
+    "template_chars": 3827,
+    "bytes_fetched": 8388608,
+    "total_size": 657289344,
+    "fraction_fetched": 0.012762
+  },
+  {
+    "model": "bartowski/Meta-Llama-3.1-8B-Instruct-GGUF",
+    "revision": "bf5b95e96dac0462e2a09145ec66cae9a3f12067",
+    "filename": "Meta-Llama-3.1-8B-Instruct-IQ2_M.gguf",
+    "file": "bartowski__Meta-Llama-3.1-8B-Instruct-GGUF.jinja",
+    "template_sha256": "e10ca381b1ccc5cf9db52e371f3b6651576caee0a630b452e2816b2d404d4b65",
+    "template_chars": 4614,
+    "bytes_fetched": 8388608,
+    "total_size": 2948285856,
+    "fraction_fetched": 0.002845
+  },
+  {
+    "model": "bartowski/Mistral-7B-Instruct-v0.3-GGUF",
+    "revision": "61fd4167fff3ab01ee1cfe0da183fa27a944db48",
+    "filename": "Mistral-7B-Instruct-v0.3-IQ1_S.gguf",
+    "file": "bartowski__Mistral-7B-Instruct-v0.3-GGUF.jinja",
+    "template_sha256": "26a59556925c987317ce5291811ba3b7f32ec4c647c400c6cc7e3a9993007ba7",
+    "template_chars": 470,
+    "bytes_fetched": 1048576,
+    "total_size": 1615319264,
+    "fraction_fetched": 0.000649
+  },
+  {
+    "model": "bartowski/Phi-3.5-mini-instruct-GGUF",
+    "revision": "6d70da17e749a471ccb62ade694486011a75cda3",
+    "filename": "Phi-3.5-mini-instruct-IQ2_M.gguf",
+    "file": "bartowski__Phi-3.5-mini-instruct-GGUF.jinja",
+    "template_sha256": "78d976a442bcde2f0be15aafbb8e3050e1104f86732266f68403251b89982a90",
+    "template_chars": 430,
+    "bytes_fetched": 1048576,
+    "total_size": 1316395296,
+    "fraction_fetched": 0.000797
+  },
+  {
+    "model": "bartowski/Qwen2.5-1.5B-Instruct-GGUF",
+    "revision": "9eadc66189c7641e1ddd226b8267a9119b2ce2d4",
+    "filename": "Qwen2.5-1.5B-Instruct-IQ2_M.gguf",
+    "file": "bartowski__Qwen2.5-1.5B-Instruct-GGUF.jinja",
+    "template_sha256": "89d726e7795b101935db5c909c75a7d403a47deedad53a64947e9b079ba94def",
+    "template_chars": 2429,
+    "bytes_fetched": 6291456,
+    "total_size": 601054816,
+    "fraction_fetched": 0.010467
+  },
+  {
+    "model": "bartowski/Qwen2.5-Coder-1.5B-Instruct-GGUF",
+    "revision": "1af47f78b1f9b0c242fabe43f7a365d5a67f3207",
+    "filename": "Qwen2.5-Coder-1.5B-Instruct-IQ2_M.gguf",
+    "file": "bartowski__Qwen2.5-Coder-1.5B-Instruct-GGUF.jinja",
+    "template_sha256": "44d5f08f3f72b837eaad09f13a54c1f9f4eb58d75240334548b7fd52a5437fa5",
+    "template_chars": 2427,
+    "bytes_fetched": 6291456,
+    "total_size": 601055008,
+    "fraction_fetched": 0.010467
+  },
+  {
+    "model": "bartowski/SmolLM2-360M-Instruct-GGUF",
+    "revision": "7be6f65f1db715fe5dc5a4634c0d459b4eed42ec",
+    "filename": "SmolLM2-360M-Instruct-IQ3_XS.gguf",
+    "file": "bartowski__SmolLM2-360M-Instruct-GGUF.jinja",
+    "template_sha256": "872be49dbb638044ad01b60388f48d469ff2980e5f0dccdc22ec907db54d0788",
+    "template_chars": 368,
+    "bytes_fetched": 2097152,
+    "total_size": 218674080,
+    "fraction_fetched": 0.00959
+  },
+  {
+    "model": "bartowski/gemma-2-2b-it-GGUF",
+    "revision": "855f67caed130e1befc571b52bd181be2e858883",
+    "filename": "gemma-2-2b-it-IQ3_M.gguf",
+    "file": "bartowski__gemma-2-2b-it-GGUF.jinja",
+    "template_sha256": "ecd6ae513fe103f0eb62e8ab5bfa8d0fe45c1074fa398b089c93a7e70c15cfd6",
+    "template_chars": 591,
+    "bytes_fetched": 6291456,
+    "total_size": 1393561440,
+    "fraction_fetched": 0.004515
+  },
+  {
+    "model": "microsoft/Phi-3-mini-4k-instruct-gguf",
+    "revision": "a64113399c2f6b8ad3e11c394733a2ddadaa7f33",
+    "filename": "Phi-3-mini-4k-instruct-q4.gguf",
+    "file": "microsoft__Phi-3-mini-4k-instruct-gguf.jinja",
+    "template_sha256": "268b6082ceb7176dc6ed80557a2f7837f9f0339592fbee677d405a553af15f88",
+    "template_chars": 269,
+    "bytes_fetched": 1048576,
+    "total_size": 2393231072,
+    "fraction_fetched": 0.000438
+  }
+]

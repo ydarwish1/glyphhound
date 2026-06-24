@@ -1,0 +1,13 @@
+{#-
+  MARKER FIXTURE - Phase 10: dunder/code-exec names built by the |replace filter.
+  Each dangerous identifier is hidden behind placeholder characters and restored with
+  `|replace` (`'__YYYY__'|replace('YYYY','init')`), so it never appears whole. The Phase-10
+  de-obfuscator folds each constant |replace back to the identifier, so the unchanged sink
+  walk fires: cycler -> __init__ -> __globals__ -> __builtins__ -> __import__ -> system.
+
+  HARMLESS (MARKER only): parsed + walked, never rendered. The
+  "payload" is the sentinel GLYPHHOUND_REPLACE_MARKER. WITHOUT folding: 0 findings;
+  WITH folding: a reachable GH-S001 (+ GH-S002) chain.
+-#}
+{% for m in messages %}{{ m.role }}: {{ m.content }}
+{% endfor %}{{ cycler['__YYYY__'|replace('YYYY','init')]['__YYYYYYY__'|replace('YYYYYYY','globals')]['__YYYYYYYY__'|replace('YYYYYYYY','builtins')]['__YYYYYY__'|replace('YYYYYY','import')]('os')['sZZtem'|replace('ZZ','ys')]('GLYPHHOUND_REPLACE_MARKER') }}

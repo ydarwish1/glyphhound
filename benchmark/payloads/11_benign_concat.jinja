@@ -1,0 +1,4 @@
+{#- BENIGN Phase-8 benchmark control: harmless concatenation folding to the identifier 'role'.
+    Proves the de-obfuscator does not false-positive on concatenation itself. See ../README.md. -#}
+{% set role_key = 'rol' + 'e' %}{% for m in messages %}{{ m[role_key] }}: {{ m.content }}
+{% endfor %}

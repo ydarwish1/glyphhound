@@ -1,0 +1,16 @@
+{#-
+  CONTAINMENT PROBE - Phase 6: proves the sandbox BLOCKS a real filesystem syscall.
+  Uses the SAME SSTI escape as the marker fixture to reach the builtin `open`, but aims
+  the write at the injected `outside` path, which sits OUTSIDE the sandbox's temp scratch
+  dir. A correctly contained renderer must DENY this write:
+      cycler -> __init__ -> __globals__ -> __builtins__ -> open(<outside>, 'w')  [BLOCKED]
+
+  The Phase-6 audit-hook policy allows writes only within the scratch dir, so rendering
+  this raises inside the subprocess and the out-of-scratch file is never created. The
+  containment test asserts both: the write attempt was blocked AND the file is absent.
+
+  HARMLESS (MARKER only): even if containment failed, the "payload"
+  only writes a short marker string to a parent-managed temp path that the harness then
+  removes. No real/destructive command; no weights loaded.
+-#}
+{{ cycler.__init__.__globals__.__builtins__['open'](outside, 'w').write('GLYPHHOUND_OUT_OF_SCRATCH') }}

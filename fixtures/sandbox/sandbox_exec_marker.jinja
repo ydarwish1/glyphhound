@@ -1,0 +1,23 @@
+{#-
+  MARKER FIXTURE - Phase 6 sandbox confirmation: a template that REACHES code execution.
+  Same public Jinja2 SSTI gadget class as CVE-2024-34359, rooted in the dual-use Jinja
+  gadget `cycler` and pivoting THROUGH it into the Python object model to reach the
+  builtin `open`:
+      cycler -> __init__ -> __globals__ -> __builtins__ -> open(<sentinel>, 'w')
+
+  Unlike the fixtures in fixtures/malicious/ (which are STATIC-analysis fixtures, never
+  rendered), this one is PURPOSE-BUILT TO BE RENDERED - but ONLY inside the Phase-6
+  locked-down subprocess (src/glyphhound/sandbox/), never in the main process. When the
+  contained renderer executes it, the SSTI chain reaches `open` and writes the harmless
+  sentinel string GLYPHHOUND_MARKER to the injected `sentinel` path, which sits
+  INSIDE the sandbox's temp scratch dir (an allowed write). The confirmer observes that
+  file and sets Finding.confirmed=True - proof that code execution was actually reached.
+
+  HARMLESS (MARKER only):
+  - The "payload" writes a sentinel file in a throwaway scratch dir; it is NOT a real or
+    destructive command. No weights are ever loaded.
+  - Statically this is a genuine sink: the dunder chain flags reachable GH-S001, so the
+    static pipeline already treats it as malicious; the sandbox merely CONFIRMS it.
+-#}
+{% for m in messages %}{{ m.role }}: {{ m.content }}
+{% endfor %}{{ cycler.__init__.__globals__.__builtins__['open'](sentinel, 'w').write('GLYPHHOUND_MARKER') }}

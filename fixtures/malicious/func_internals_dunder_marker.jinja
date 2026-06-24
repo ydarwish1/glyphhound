@@ -1,0 +1,16 @@
+{#-
+  MARKER FIXTURE - Phase 12 Catalog++: the FUNCTION-INTERNALS dunder family.
+  __code__ / __closure__ / __func__ / __self__ peel a function or bound method open to reach
+  its code object, captured free variables, underlying function and bound instance - the next
+  hop after them is __globals__ -> __builtins__, the standard route to arbitrary execution.
+  The Phase-2..11 catalog did not list them, so this chain is MISSED; Phase 12 adds them to
+  DANGEROUS_DUNDERS (GH-S001, CWE-94) and each access becomes reachable.
+
+  HARMLESS (MARKER only): parsed + walked, never rendered; these are
+  bare attribute accesses that run no command. The SIGNAL is reaching the function internals,
+  not the harmless 'handler'/'bound' identifiers.
+  Sources: PayloadsAllTheThings (SSTI/Jinja2); Python data model (function/method __code__,
+  __closure__, __func__, __self__); CWE-94 / CWE-1336.
+-#}
+{% for m in messages %}{{ m.role }}: {{ m.content }}
+{% endfor %}{{ handler.__code__ }}{{ handler.__closure__ }}{{ bound.__func__ }}{{ bound.__self__ }}

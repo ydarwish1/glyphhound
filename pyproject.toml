@@ -1,0 +1,57 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "glyphhound"
+version = "0.1.0"
+description = "Deterministic scanner for code-executing chat templates inside model files (GGUF / Ollama / Hugging Face)."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Yusif Darwish" }]
+keywords = ["security", "jinja2", "gguf", "ollama", "huggingface", "chat-template", "llm", "sast", "sarif", "supply-chain"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Security",
+    "Topic :: Software Development :: Quality Assurance",
+]
+# Stage 1 (Acquirer) uses only the Python standard library, by design:
+# fewer pinned dependencies means easier determinism.
+# Stage 2 (Parser) adds Jinja2, pinned exactly so the AST API can't drift under us.
+# MarkupSafe is Jinja2's only dependency.
+dependencies = ["jinja2==3.1.6"]
+
+# jsonschema is a DEV-ONLY dependency: it validates the Stage-5 SARIF output against
+# the vendored official SARIF 2.1.0 schema in the offline test/verify layer.
+# The shipped reporter emits SARIF with the stdlib `json` only and never imports
+# jsonschema, so the runtime dependency set stays jinja2-only.
+[project.optional-dependencies]
+dev = ["pytest==9.1.1", "jsonschema==4.26.0"]
+
+# The console entry point: `glyphhound scan <ref>` (same as `python -m glyphhound scan`).
+# main() returns the CI exit code (0 clean / 1 a reachable finding gates / 2 scan error),
+# which setuptools' generated wrapper passes to sys.exit().
+[project.scripts]
+glyphhound = "glyphhound.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/ydarwish1/glyphhound"
+Repository = "https://github.com/ydarwish1/glyphhound"
+Issues = "https://github.com/ydarwish1/glyphhound/issues"
+Changelog = "https://github.com/ydarwish1/glyphhound/blob/main/CHANGELOG.md"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

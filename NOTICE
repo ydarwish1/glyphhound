@@ -1,0 +1,38 @@
+GlyphHound
+Copyright 2026 Yusif Darwish
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+================================================================================
+Third-party components
+================================================================================
+
+1. Jinja2 (runtime dependency)
+   Source:  https://palletsprojects.com/p/jinja/
+   License: BSD-3-Clause
+   MarkupSafe (Jinja2's dependency) is also BSD-3-Clause.
+   These are installed by pip from their declared distributions; their source is
+   not vendored in this repository.
+
+2. SARIF 2.1.0 JSON schema  (schemas/sarif-2.1.0.json)
+   Source:  OASIS sarif-spec  (https://github.com/oasis-tcs/sarif-spec)
+   Copyright (c) OASIS Open. All Rights Reserved.
+   Redistributed under the OASIS IPR Policy
+   (https://www.oasis-open.org/policies-guidelines/ipr/), retaining OASIS's
+   copyright. It is used only to validate GlyphHound's SARIF output in the
+   offline test/verify layer. See the upstream repository for the authoritative
+   copy.
+
+3. Benign chat-template corpus and benign fixtures
+   Files:   corpus/templates/*.jinja  and  fixtures/benign/*.jinja
+   These are real, unmodified chat templates extracted from public Hugging Face
+   model repositories, vendored solely to measure GlyphHound's false-positive
+   rate. Only the chat template (a small configuration string) is stored; no
+   model weights are included.
+
+   Each template is third-party content under the license of its originating
+   model repository (for example Apache-2.0, the Meta Llama Community License,
+   the Gemma Terms of Use, or other terms) and is NOT covered by this project's
+   Apache-2.0 license. Per-file provenance (source repository, commit SHA,
+   sha256) is recorded in corpus/PROVENANCE.json. See corpus/README.md and
+   fixtures/benign/README.md.

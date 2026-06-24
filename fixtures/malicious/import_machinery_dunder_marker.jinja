@@ -1,0 +1,17 @@
+{#-
+  MARKER FIXTURE - Phase 12 Catalog++: the IMPORT-MACHINERY dunder family (+ the importlib name).
+  __loader__ / __spec__ expose a module's loader (which can load_module / exec_module arbitrary
+  code); __wrapped__ unwraps a decorator to reach the underlying (often more privileged) callable;
+  the bare name `importlib` is the dynamic-import gateway (importlib.import_module). The
+  Phase-2..11 catalog listed none of these, so this is MISSED; Phase 12 adds the dunders to
+  DANGEROUS_DUNDERS (GH-S001, CWE-94) and `importlib` to the code-exec names (GH-S002, CWE-94).
+  `importlib` is a base name pivoting onto __loader__, so it is REPORTED (presence) while the
+  __loader__/__spec__/__wrapped__ accesses are reachable - at least one reachable finding gates.
+
+  HARMLESS (MARKER only): parsed + walked, never rendered; bare attribute
+  accesses, no command runs. The SIGNAL is the import-machinery dunders + the importlib name.
+  Sources: PayloadsAllTheThings (SSTI/Jinja2); Python import system (__loader__/__spec__,
+  importlib); functools.wraps (__wrapped__); CWE-94 / CWE-1336.
+-#}
+{% for m in messages %}{{ m.role }}: {{ m.content }}
+{% endfor %}{{ importlib.__loader__ }}{{ mod.__spec__ }}{{ wrapper.__wrapped__ }}
