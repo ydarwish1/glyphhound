@@ -17,6 +17,7 @@ import struct
 import urllib.error
 import urllib.request
 
+from .hf_source import _build_request
 from .models import (
     AcquireError,
     ChatTemplate,
@@ -47,7 +48,9 @@ _FIXED_WIDTH = {
 _MAX_METADATA_BYTES = 64 * 1024 * 1024
 _CHUNK = 1024 * 1024  # 1 MiB HTTP range granularity
 _TIMEOUT = 30
-_USER_AGENT = "glyphhound/0.0 (+template-extraction; no-weights)"
+# Real GGUF metadata is a flat KV list; nested arrays exist but not dozens deep.
+# Cap so a hostile header cannot RecursionError the scanner (exit 2, not a traceback).
+_MAX_ARRAY_DEPTH = 32
 
 
 def _read_capped(resp, limit: int) -> bytes:
@@ -106,11 +109,7 @@ class _HttpRangeWindow(_ByteWindow):
 
     def _range_get(self, start: int, length: int) -> bytes:
         end = start + length - 1
-        headers = {"Range": f"bytes={start}-{end}", "User-Agent": _USER_AGENT}
-        token = os.environ.get("HF_TOKEN")  # Phase 20: gated/private-repo access (sent only if set)
-        if token:
-            headers["Authorization"] = f"Bearer {token}"
-        req = urllib.request.Request(self.url, headers=headers)
+        req = _build_request(self.url, extra_headers={"Range": f"bytes={start}-{end}"})
         try:
             resp = urllib.request.urlopen(req, timeout=_TIMEOUT)
         except urllib.error.HTTPError as exc:
@@ -120,6 +119,10 @@ class _HttpRangeWindow(_ByteWindow):
                     "token with access"
                 ) from exc
             raise AcquireError(f"{self.url}: HTTP {exc.code}") from exc
+        except urllib.error.URLError as exc:
+            raise AcquireError(f"{self.url}: could not fetch ({exc.reason})") from exc
+        except TimeoutError as exc:
+            raise AcquireError(f"{self.url}: timed out") from exc
         with resp:
             if resp.status != 206:
                 # HTTP 200 means the server ignored Range and is about to stream the
@@ -207,8 +210,12 @@ class _Cursor:
         return self.take(self.u64())
 
 
-def _consume_value(cur: _Cursor, vtype: int) -> None:
+def _consume_value(cur: _Cursor, vtype: int, depth: int = 0) -> None:
     """Advance the cursor past a metadata value we do not need to keep."""
+    if depth > _MAX_ARRAY_DEPTH:
+        raise AcquireError(
+            "GGUF metadata arrays nest too deeply; refusing to parse"
+        )
     width = _FIXED_WIDTH.get(vtype)
     if width is not None:
         cur.skip(width)
@@ -227,7 +234,7 @@ def _consume_value(cur: _Cursor, vtype: int) -> None:
                 cur.skip(cur.u64())
         elif elem_type == _ARRAY:
             for _ in range(count):
-                _consume_value(cur, _ARRAY)
+                _consume_value(cur, _ARRAY, depth + 1)
         else:
             raise AcquireError(f"unknown GGUF array element type {elem_type}")
         return
@@ -301,7 +308,10 @@ def read_gguf_template(ref: str, *, filename: str | None = None, revision: str =
         return _extract_from_window(_HttpRangeWindow(ref), ref)
 
     if os.path.exists(ref):
-        window = _FileWindow(ref)
+        try:
+            window = _FileWindow(ref)
+        except OSError as exc:
+            raise AcquireError(f"{ref}: cannot open GGUF file ({exc})") from exc
         try:
             return _extract_from_window(window, ref)
         finally:

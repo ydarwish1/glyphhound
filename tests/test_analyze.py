@@ -109,6 +109,28 @@ def test_flags_dunder_via_attr_filter():
     assert any(f.rule_id == "GH-S001" for f in findings)
 
 
+@pytest.mark.parametrize("form", [
+    "{{ objects|map(attribute='__class__')|list }}",
+    "{{ objects|map(attribute='__class__.__init__.__globals__')|list }}",
+    "{{ objects|selectattr('__class__')|list }}",
+    "{{ objects|rejectattr('__globals__')|list }}",
+    "{{ objects|selectattr(attribute='__class__')|list }}",
+])
+def test_flags_dunder_via_map_selectattr(form):
+    findings = analyze_template(form)
+    assert any(f.rule_id == "GH-S001" and f.reachable for f in findings), form
+
+
+@pytest.mark.parametrize("benign", [
+    "{{ messages|map(attribute='role')|list }}",
+    "{{ messages|selectattr('role', 'equalto', 'system')|list }}",
+    "{{ messages|rejectattr('content')|list }}",
+    "{{ messages|map('list') }}",  # positional arg is a filter name, not an attribute
+])
+def test_benign_map_selectattr_stay_clean(benign):
+    assert analyze_template(benign) == [], benign
+
+
 def test_flags_code_exec_name():
     findings = analyze_template("{{ os.system('x') }}")
     rule_ids = {f.rule_id for f in findings}

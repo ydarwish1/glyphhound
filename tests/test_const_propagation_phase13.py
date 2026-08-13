@@ -50,6 +50,20 @@ def test_single_variable_held_dunder_subscript_flags():
     assert any(f.reachable and f.rule_id == "GH-S001" for f in findings)
 
 
+def test_alias_chain_set_b_equals_a_flags():
+    # One hop through another {% set %} used to miss: b became Const only after a was
+    # substituted, and a second propagate pass is what exposes x[b].
+    findings = analyze_template("{% set a = '__class__' %}{% set b = a %}{{ x[b] }}")
+    assert any(f.reachable and f.rule_id == "GH-S001" for f in findings)
+
+
+def test_longer_alias_chain_flags():
+    findings = analyze_template(
+        "{% set a = '__class__' %}{% set b = a %}{% set c = b %}{{ x[c] }}"
+    )
+    assert any(f.reachable and f.rule_id == "GH-S001" for f in findings)
+
+
 def test_propagate_then_fold_reaches_concatenated_dunder():
     # {% set a='__re' %}{% set b='duce__' %}{{ x[a+b] }} -> x['__reduce__'] (propagate, then fold)
     findings = analyze_template("{% set a = '__re' %}{% set b = 'duce__' %}{{ x[a + b] }}")

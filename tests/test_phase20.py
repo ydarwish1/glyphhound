@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 import os
 import urllib.error
+import urllib.request
 
 import pytest
 
@@ -124,6 +125,7 @@ def test_gguf_sends_hf_token_when_set(monkeypatch):
 
     def fake_urlopen(req, timeout=None):
         seen["auth"] = req.get_header("Authorization")
+        seen["in_headers"] = "Authorization" in req.headers
         raise urllib.error.HTTPError(getattr(req, "full_url", "u"), 403, "Forbidden", {}, None)
 
     monkeypatch.setenv("HF_TOKEN", "secret-token")
@@ -131,3 +133,38 @@ def test_gguf_sends_hf_token_when_set(monkeypatch):
     with pytest.raises(AcquireError):
         gguf.read_gguf_template("owner/repo", filename="x.gguf")
     assert seen["auth"] == "Bearer secret-token"
+    # Unredirected: urllib would copy req.headers onto a 302, not unredirected_hdrs.
+    assert seen["in_headers"] is False
+
+
+def test_gguf_does_not_send_token_to_non_hf_url(monkeypatch):
+    seen = {}
+
+    def fake_urlopen(req, timeout=None):
+        seen["auth"] = req.get_header("Authorization")
+        raise urllib.error.URLError("blocked")
+
+    monkeypatch.setenv("HF_TOKEN", "secret-token")
+    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+    with pytest.raises(AcquireError, match="could not fetch"):
+        gguf.read_gguf_template("https://evil.example/model.gguf")
+    assert seen["auth"] is None
+
+
+def test_hf_token_not_attached_to_non_hf_host(monkeypatch):
+    monkeypatch.setenv("HF_TOKEN", "secret-token")
+    req = hf_source._build_request("https://evil.example/x")
+    assert req.get_header("Authorization") is None
+
+
+def test_authorization_is_not_copied_on_redirect(monkeypatch):
+    """urllib copies Request.headers onto a 302, not unredirected_hdrs -- prove the token
+    does not ride along to a CDN / attacker host."""
+    monkeypatch.setenv("HF_TOKEN", "secret-token")
+    req = hf_source._build_request("https://huggingface.co/o/r/resolve/main/x.gguf")
+    new = urllib.request.HTTPRedirectHandler().redirect_request(
+        req, None, 302, "Found", {}, "https://cdn.example/steal",
+    )
+    assert new is not None
+    assert new.get_header("Authorization") is None
+    assert "Authorization" not in new.headers

@@ -122,6 +122,13 @@ def test_honors_numeric_retry_after(monkeypatch, no_sleep):
     assert no_sleep == [7.0]
 
 
+def test_non_ascii_retry_after_uses_backoff_not_crash(monkeypatch, no_sleep):
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    _script(monkeypatch, [_http_error(429, retry_after="²"), _FakeResp(body=b"{}")])
+    assert hf_source._http_get(_TC) == b"{}"
+    assert no_sleep == [1.0]
+
+
 def test_backoff_is_deterministic_exponential(monkeypatch, no_sleep):
     # Always 429, no Retry-After -> a fixed exponential schedule (no random jitter).
     monkeypatch.delenv("HF_TOKEN", raising=False)
@@ -143,6 +150,14 @@ def test_404_is_not_retried(monkeypatch, no_sleep):
     monkeypatch.delenv("HF_TOKEN", raising=False)
     _script(monkeypatch, [_http_error(404)])
     assert hf_source._http_get(_TC) is None
+    assert no_sleep == []
+
+
+def test_urlerror_becomes_acquire_error(monkeypatch, no_sleep):
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    _script(monkeypatch, [urllib.error.URLError("name or service not known")])
+    with pytest.raises(AcquireError, match="could not fetch"):
+        hf_source._http_get(_TC)
     assert no_sleep == []
 
 

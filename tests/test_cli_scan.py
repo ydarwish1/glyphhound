@@ -17,6 +17,7 @@ from __future__ import annotations
 import io
 import json
 import os
+import urllib.error
 
 import pytest
 
@@ -216,7 +217,34 @@ def test_cli_ambiguous_ref_exits_2(capsys):
     assert "source" in err.lower()
 
 
-def test_cli_hf_missing_file_exits_2(capsys):
+def test_cli_missing_file_explicit_source_exits_2(capsys):
+    rc = main(["scan", "/tmp/does-not-exist-glyphhound.jinja", "--source", "file"])
+    err = capsys.readouterr().err
+    assert rc == 2
+    assert "glyphhound:" in err
+
+
+def test_cli_directory_exits_2(tmp_path, capsys):
+    rc = main(["scan", str(tmp_path)])
+    err = capsys.readouterr().err
+    assert rc == 2
+    assert "not a file" in err
+
+
+def test_cli_url_error_exits_2(monkeypatch, capsys):
+    def boom(req, timeout=None):
+        raise urllib.error.URLError("name or service not known")
+    monkeypatch.setattr("urllib.request.urlopen", boom)
+    rc = main(["scan", "https://example.invalid/model.gguf"])
+    err = capsys.readouterr().err
+    assert rc == 2
+    assert "glyphhound:" in err
+
+
+def test_cli_hf_missing_file_exits_2(monkeypatch, capsys):
+    def raise_404(req, timeout=None):
+        raise urllib.error.HTTPError(req.full_url, 404, "Not Found", {}, None)
+    monkeypatch.setattr("urllib.request.urlopen", raise_404)
     rc = main(["scan", "owner/model", "--source", "hf"])
 
     assert rc == 2

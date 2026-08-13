@@ -72,10 +72,17 @@ def read_ollama_template(
     if not os.path.isfile(manifest_path):
         raise AcquireError(f"ollama:{model}: manifest not found at {manifest_path}")
     with open(manifest_path, "r", encoding="utf-8") as fh:
-        manifest = json.load(fh)
+        try:
+            manifest = json.load(fh)
+        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+            raise AcquireError(f"ollama:{model}: manifest is not valid JSON ({exc})") from exc
+    if not isinstance(manifest, dict):
+        raise AcquireError(f"ollama:{model}: manifest is not a JSON object")
 
     layers = manifest.get("layers", [])
-    template_layer = next((l for l in layers if l.get("mediaType") == _TEMPLATE_MEDIA), None)
+    if not isinstance(layers, list):
+        raise AcquireError(f"ollama:{model}: manifest layers are not a list")
+    template_layer = next((l for l in layers if isinstance(l, dict) and l.get("mediaType") == _TEMPLATE_MEDIA), None)
     if template_layer is None:
         raise TemplateNotFoundError(f"ollama:{model}: no template layer in manifest")
 

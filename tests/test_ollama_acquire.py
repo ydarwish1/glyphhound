@@ -102,3 +102,33 @@ def test_malformed_manifest_layer_raises(tmp_path):
         json.dump(manifest, fh)
     with pytest.raises(AcquireError):
         read_ollama_template("smol:test", models_dir=models_dir)
+
+
+def test_invalid_manifest_json_raises_acquire_error(tmp_path):
+    models_dir = str(tmp_path)
+    write_ollama_model(models_dir, "smol:test", TEMPLATE)
+    mpath = os.path.join(models_dir, "manifests", "registry.ollama.ai", "library", "smol", "test")
+    with open(mpath, "w", encoding="utf-8") as fh:
+        fh.write("{not json")
+    with pytest.raises(AcquireError, match="not valid JSON"):
+        read_ollama_template("smol:test", models_dir=models_dir)
+
+
+def test_manifest_json_array_raises_acquire_error(tmp_path):
+    models_dir = str(tmp_path)
+    write_ollama_model(models_dir, "smol:test", TEMPLATE)
+    mpath = os.path.join(models_dir, "manifests", "registry.ollama.ai", "library", "smol", "test")
+    with open(mpath, "w", encoding="utf-8") as fh:
+        fh.write("[]")
+    with pytest.raises(AcquireError, match="not a JSON object"):
+        read_ollama_template("smol:test", models_dir=models_dir)
+
+
+def test_manifest_non_utf8_raises_acquire_error(tmp_path):
+    models_dir = str(tmp_path)
+    write_ollama_model(models_dir, "smol:test", TEMPLATE)
+    mpath = os.path.join(models_dir, "manifests", "registry.ollama.ai", "library", "smol", "test")
+    with open(mpath, "wb") as fh:
+        fh.write(b"\xff\xfe{not utf-8")
+    with pytest.raises(AcquireError, match="not valid JSON"):
+        read_ollama_template("smol:test", models_dir=models_dir)

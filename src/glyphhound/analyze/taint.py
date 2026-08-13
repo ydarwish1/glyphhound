@@ -32,6 +32,29 @@ from .models import CODE_EXEC_NAMES, DANGEROUS_DUNDERS, REFLECTION_BUILTINS
 # An access chain is a nest of these node types linked by ``.node`` (the spine).
 _CHAIN_NODES = (nodes.Getattr, nodes.Getitem, nodes.Filter, nodes.Call)
 
+# Filters whose ``attribute`` argument is getattr-style access (Jinja's make_attrgetter),
+# including dotted paths. ``map``'s positional arg is a *filter name*, not an attribute.
+_ATTRIBUTE_FILTERS = frozenset({"map", "selectattr", "rejectattr"})
+
+
+def attribute_filter_path(node: nodes.Filter) -> str | None:
+    """The constant attribute path for ``map`` / ``selectattr`` / ``rejectattr``, else None.
+
+    ``map`` takes the path as ``attribute=`` (a positional arg is a filter name).
+    ``selectattr`` / ``rejectattr`` take it as the first positional arg or as ``attribute=``.
+    """
+    if node.name not in _ATTRIBUTE_FILTERS:
+        return None
+    arg = None
+    if node.name == "map":
+        arg = next((kw.value for kw in node.kwargs if kw.key == "attribute"), None)
+    else:
+        arg = node.args[0] if node.args else next(
+            (kw.value for kw in node.kwargs if kw.key == "attribute"), None)
+    if isinstance(arg, nodes.Const) and isinstance(arg.value, str) and arg.value:
+        return arg.value
+    return None
+
 
 def compute_reachable(ast: nodes.Node) -> set[int]:
     """Return the ``id()``s of the sink nodes in ``ast`` that are reachable.
@@ -86,6 +109,15 @@ def _resolve(node: nodes.Node, reachable: set[int], seen: set[int]) -> bool:
         if base_tainted:
             reachable.add(id(node))
         return base_tainted
+
+    path = attribute_filter_path(node) if isinstance(node, nodes.Filter) else None
+    if path is not None:
+        seen.add(id(node))
+        tainted = _resolve(node.node, reachable, seen)
+        for segment in path.split("."):
+            if segment:
+                tainted = _step(node, segment, tainted, reachable)
+        return tainted
 
     if isinstance(node, nodes.Filter):  # any other filter: taint flows through it
         seen.add(id(node))

@@ -87,6 +87,22 @@ def test_kwarg_getattr_is_upgraded_from_reflection_to_dunder():
     assert all(f.rule_id != "GH-S004" for f in after)
 
 
+def test_getattr_default_subtree_is_kept():
+    # getattr's default is evaluated eagerly; rewriting to x.__class__ must not drop
+    # a sink sitting in that default (setattr already kept its assigned value).
+    findings = analyze_template("{{ getattr(x, '__class__', y.__globals__) }}")
+    evidence = {f.evidence for f in findings if f.reachable}
+    assert ".__class__" in evidence
+    assert ".__globals__" in evidence
+
+
+def test_getattr_kwarg_default_subtree_is_kept():
+    findings = analyze_template("{{ getattr(x, name='__class__', default=y.__globals__) }}")
+    evidence = {f.evidence for f in findings if f.reachable}
+    assert ".__class__" in evidence
+    assert ".__globals__" in evidence
+
+
 # --------------------------------------------------------------------------- #
 # The same operations over benign content must NOT flag (no new FPs).
 # --------------------------------------------------------------------------- #

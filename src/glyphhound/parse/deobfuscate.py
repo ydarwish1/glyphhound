@@ -56,8 +56,9 @@ of work as the concatenation fold):
 On top of the folds, a **constant-propagation** pass (Phase 13) substitutes ``{% set %}``
 variables bound to a constant string into their loads -- so a dangerous identifier carried in
 a variable (``{% set c = '__class__' %}{{ x[c] }}``) is exposed to the same ``Const``-only walk.
-It runs *between* two folds (fold -> propagate -> fold) so a value built by concatenation folds
-first and a substitution that re-creates a concatenation folds after. It is conservative
+It runs between folds (fold, then propagate+fold until a small bound) so a value built by
+concatenation folds first, a substitution that re-creates a concatenation folds after, and a
+``{% set b = a %}`` alias is picked up on the next propagate. It is conservative
 (a name is propagated only when every binding of it is the same constant ``{% set %}``) and
 constant-only -- never evaluated or rendered. See :func:`_propagate_constants`.
 
@@ -100,17 +101,26 @@ def normalize(ast: nodes.Node, *, dangerous_names: frozenset[str]) -> Normalized
     set of identifiers worth resolving a ``getattr``/``setattr`` into (the Stage-3 dunder +
     code-exec catalog), injected by the caller to keep this module free of a Stage-3 import.
 
-    Three deterministic stages over the copy (Phase 13): **fold -> propagate -> fold**. The
-    first fold turns each ``{% set %}`` value that is built from literals into a ``Const``;
-    :func:`_propagate_constants` then substitutes those constant-bound variables into their
-    loads, so a dangerous identifier held in a variable (``{% set c = '__class__' %}{{ x[c] }}``)
-    becomes visible to the unchanged ``Const``-only walk; the second fold collapses any
-    concatenation the substitution newly exposes (``x[a + b]`` once ``a``/``b`` are consts).
+    Three deterministic stages over the copy (Phase 13), repeated to a small bound so a
+    constant can hop through ``{% set b = a %}`` aliases: **fold -> (propagate -> fold)* **.
+    The first fold turns each ``{% set %}`` value that is built from literals into a
+    ``Const``; :func:`_propagate_constants` then substitutes those constant-bound variables
+    into their loads, so a dangerous identifier held in a variable
+    (``{% set c = '__class__' %}{{ x[c] }}``) becomes visible to the unchanged ``Const``-only
+    walk; the next fold collapses any concatenation the substitution newly exposes
+    (``x[a + b]`` once ``a``/``b`` are consts). Extra propagate passes pick up aliases
+    (``{% set b = a %}{{ x[b] }}``) that only become constant *after* the previous substitute.
     """
     applied: list[str] = []
     tree = _transform(copy.deepcopy(ast), dangerous_names, applied)
-    tree = _propagate_constants(tree, applied)
-    tree = _transform(tree, dangerous_names, applied)
+    # One pass per {% set %}, capped so a hostile template cannot loop the walker forever.
+    bound = min(sum(1 for _ in tree.find_all(nodes.Assign)) + 1, 32)
+    for _ in range(max(bound, 1)):
+        before = len(applied)
+        tree = _propagate_constants(tree, applied)
+        tree = _transform(tree, dangerous_names, applied)
+        if len(applied) == before:
+            break
     return NormalizedAST(tree, tuple(applied))
 
 
@@ -553,9 +563,9 @@ def _resolve_reflection(node: nodes.Node, dangerous_names: frozenset[str],
     access, else None.
 
     ``getattr(obj, '__class__')`` -> ``obj.__class__`` (a ``Getattr``) so it classifies as
-    the dunder sink. ``setattr(obj, '__class__', value)`` keeps the assigned ``value`` as a
-    sub-node (wrapped on the resolved access) so a sink hidden inside it is not lost. A
-    benign or non-constant name is left untouched (stays a GH-S004 reflection call).
+    the dunder sink. Extra arguments -- ``setattr``'s assigned value, ``getattr``'s default
+    -- stay on a wrapping ``Call`` so a sink hidden in them is not lost. A benign or
+    non-constant name is left untouched (stays a GH-S004 reflection call).
     """
     if not (isinstance(node, nodes.Call) and isinstance(node.node, nodes.Name)):
         return None
@@ -575,12 +585,15 @@ def _resolve_reflection(node: nodes.Node, dangerous_names: frozenset[str],
 
     lineno = getattr(node, "lineno", 0)
     access = nodes.Getattr(obj, name.value, "load", lineno=lineno)
-    value = _call_arg(node, 2, "value")
-    if func == "setattr" and value is not None:
-        applied.append(f"setattr -> .{name.value}")
-        # Retain the assigned value as an argument so its own subtree is still analyzed.
-        return nodes.Call(access, [value], [], None, None, lineno=lineno)
-    applied.append(f"getattr -> .{name.value}")
+    extras: list[nodes.Node] = []
+    if len(node.args) > 2:
+        extras.extend(node.args[2:])
+    for kw in node.kwargs:
+        if kw.key not in ("object", "name"):
+            extras.append(kw.value)
+    applied.append(f"{func} -> .{name.value}")
+    if extras:
+        return nodes.Call(access, extras, [], None, None, lineno=lineno)
     return access
 
 

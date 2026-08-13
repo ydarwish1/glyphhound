@@ -24,6 +24,7 @@ import os
 import struct
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 
 from .models import (
@@ -48,35 +49,47 @@ _DEFAULT_TEMPLATE_NAME = "default"
 
 # --- HTTP auth + rate-limit backoff (Phase 17) ----------------------------------
 # Anonymous by default; if HF_TOKEN is set we send it as a bearer token (higher rate limits
-# and gated-repo access). Requests are
-# retried on HTTP 429 (rate limit) and 503 (transient overload) with a FIXED exponential
-# backoff (no random jitter) so a scan reproduces; a numeric Retry-After header is
-# honored when present. This governs only WHETHER a metadata request is retried -- never how
-# much is read, so the no-weights guarantee is unchanged.
+# and gated-repo access) -- but only to Hugging Face itself, never to an arbitrary URL or
+# to a CDN after a 302. Requests are retried on HTTP 429 (rate limit) and 503 (transient
+# overload) with a FIXED exponential backoff (no random jitter) so a scan reproduces; a
+# numeric Retry-After header is honored when present. This governs only WHETHER a metadata
+# request is retried -- never how much is read, so the no-weights guarantee is unchanged.
 _MAX_RETRIES = 5
 _BACKOFF_BASE = 1.0
 _MAX_BACKOFF = 30.0
 _RETRY_STATUSES = frozenset({429, 503})
 
+# Hosts that may receive HF_TOKEN. Not *.hf.co -- that includes Hugging Face's CDN, which
+# authenticates via the signed redirect URL, not the user token.
+_HF_HOSTS = frozenset({"huggingface.co", "www.huggingface.co", "hf.co", "www.hf.co"})
+
 # Indirection so the backoff path is unit-testable offline without real waiting / requests.
 _sleep = time.sleep
 
 
-def _auth_headers() -> dict:
-    """An ``Authorization: Bearer`` header from ``HF_TOKEN`` if set, else ``{}`` (anonymous).
-
-    Read at call time (not import time) so a token exported per-run/CI is picked up.
-    """
-    token = os.environ.get("HF_TOKEN")
-    return {"Authorization": f"Bearer {token}"} if token else {}
+def _huggingface_host(url: str) -> bool:
+    """True if ``url`` is on Hugging Face (the only place HF_TOKEN belongs)."""
+    host = urllib.parse.urlparse(url).hostname
+    if not host:
+        return False
+    return host.lower().rstrip(".") in _HF_HOSTS
 
 
 def _build_request(url: str, *, extra_headers: dict | None = None) -> urllib.request.Request:
-    """A GET ``Request`` for ``url`` carrying the User-Agent + (if set) the HF auth header."""
-    headers = {"User-Agent": _USER_AGENT, **_auth_headers()}
+    """A GET ``Request`` for ``url`` with the User-Agent, and HF_TOKEN when this is the Hub.
+
+    The token is an *unredirected* header: the first hop to huggingface.co needs it, but a
+    302 to a CDN (or anywhere else) must not inherit it. urllib copies ``Request.headers``
+    onto redirects and leaves ``unredirected_hdrs`` behind.
+    """
+    headers = {"User-Agent": _USER_AGENT}
     if extra_headers:
         headers.update(extra_headers)
-    return urllib.request.Request(url, headers=headers)
+    req = urllib.request.Request(url, headers=headers)
+    token = os.environ.get("HF_TOKEN")
+    if token and _huggingface_host(url):
+        req.add_unredirected_header("Authorization", f"Bearer {token}")
+    return req
 
 
 def _urlopen(req: urllib.request.Request):
@@ -90,7 +103,9 @@ def _retry_after_seconds(exc: urllib.error.HTTPError) -> float | None:
     HTTP-date form is intentionally ignored in favor of the deterministic backoff schedule."""
     headers = getattr(exc, "headers", None)
     value = ((headers.get("Retry-After") if headers is not None else None) or "").strip()
-    return float(value) if value.isdigit() else None
+    if not value.isascii() or not value.isdigit():
+        return None
+    return float(value)
 
 
 def _open_with_retry(req: urllib.request.Request):
@@ -111,6 +126,10 @@ def _open_with_retry(req: urllib.request.Request):
                 delay = min(delay * 2, _MAX_BACKOFF)
                 continue
             raise
+        except urllib.error.URLError as exc:
+            raise AcquireError(f"{req.full_url}: could not fetch ({exc.reason})") from exc
+        except TimeoutError as exc:
+            raise AcquireError(f"{req.full_url}: timed out") from exc
 
 
 def _gated_message(url: str, code: int) -> str:

@@ -22,5 +22,8 @@ the report and work with you on a fix and coordinated disclosure.
 
 ## Safe by design
 
-GlyphHound never downloads model weights, makes no network or LLM calls at scan time, and runs the
-optional dynamic confirmer only inside a locked-down subprocess. See `ARCHITECTURE.md`.
+GlyphHound never downloads model weights and never calls an LLM. Scanning a Hugging Face
+repo or a remote `.gguf` URL does make a small metadata request (a range fetch or a
+tokenizer config) so it can read the chat template; it does not pull tensors. The optional
+`--confirm` stage is the only path that renders a template, and that render runs only
+inside a locked-down subprocess. See `ARCHITECTURE.md`.

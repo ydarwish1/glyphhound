@@ -82,7 +82,7 @@ Public, well-documented Jinja2 SSTI / sandbox-escape gadgets. Detection targets 
 - **Attribute chains reaching:** `__class__`, `__base__`, `__bases__`, `__mro__`, `__subclasses__`, `__globals__`, `__builtins__`, `__init__`, `__import__`, `__dict__`.
 - **Code-exec calls/names:** `eval`, `exec`, `__import__`, `os`, `subprocess`, `popen`, `system`, `getattr`/`setattr` used to reach the above.
 - **Jinja gadget objects:** `cycler`, `joiner`, `namespace`, `lipsum`, `self` -- taint **pivots**, not bare sinks. They are **never flagged on presence alone** (`namespace` is ubiquitous in real tool-calling templates), only when an attribute/subscript chain climbs *through* one into a dunder / code-exec name above (which GH-S001/S002 then catch). Reachability (Stage 3) is what makes them safe to treat as a taint source.
-- **Filter pivots:** the `|attr('...')` filter used to dodge dot-access detection.
+- **Filter pivots:** `|attr('...')`, and `map` / `selectattr` / `rejectattr` with a constant attribute path (including dotted paths like `__class__.__globals__`). These are the getattr-style dodges for dot-access detection. Benign uses such as `messages|map(attribute='role')` are not flagged.
 
 Each catalog entry = one `rule_id` with a severity and a short rationale, so findings are explainable.
 

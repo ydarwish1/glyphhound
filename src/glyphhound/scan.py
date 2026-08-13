@@ -129,7 +129,7 @@ def _acquire(ref: str, *, source: str, filename: str | None, revision: str) -> R
 def _detect_source(ref: str) -> str:
     """Deterministically classify ``ref`` (Phase-9 design).
 
-    Order: an http(s) URL is a gguf-url; an existing path is sniffed by magic bytes
+    Order: an http(s) URL is a gguf-url; an existing regular file is sniffed by magic bytes
     (``GGUF`` -> a GGUF file, else a raw template file); ``owner/name`` is a Hugging Face
     repo (read from its canonical template metadata, or a ``.gguf`` quant if ``--file`` is
     given); ``name[:tag]`` is an Ollama model; anything else is ambiguous and the caller
@@ -137,8 +137,10 @@ def _detect_source(ref: str) -> str:
     """
     if ref.startswith(("http://", "https://")):
         return "gguf-url"
-    if os.path.exists(ref):
+    if os.path.isfile(ref):
         return "gguf" if _is_gguf_file(ref) else "file"
+    if os.path.exists(ref):
+        raise ScanError(f"{ref!r} is not a file")
     if _HF_REPO_RE.match(ref):
         return "hf"
     if _OLLAMA_RE.match(ref):
@@ -151,8 +153,11 @@ def _detect_source(ref: str) -> str:
 
 def _is_gguf_file(path: str) -> bool:
     """True if ``path`` begins with the GGUF magic bytes."""
-    with open(path, "rb") as fh:
-        return fh.read(4) == b"GGUF"
+    try:
+        with open(path, "rb") as fh:
+            return fh.read(4) == b"GGUF"
+    except OSError:
+        return False
 
 
 def _url_path(url: str) -> str:
@@ -166,8 +171,11 @@ def _wrap_template_file(path: str) -> RawTemplate:
     This is a bare template (not a model file), so there are no weights to avoid; the
     no-weights invariant does not apply and bytes_fetched == total_size by construction.
     """
-    with open(path, "rb") as fh:
-        data = fh.read()
+    try:
+        with open(path, "rb") as fh:
+            data = fh.read()
+    except OSError as exc:
+        raise ScanError(f"{path!r}: cannot read template file ({exc})") from exc
     try:
         text = data.decode("utf-8")
     except UnicodeDecodeError as exc:

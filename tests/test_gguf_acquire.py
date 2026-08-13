@@ -134,6 +134,29 @@ def test_nested_array_is_skipped(tmp_path):
     assert read_gguf_template(str(path)).template_string == TEMPLATE
 
 
+def test_deeply_nested_arrays_raise_acquire_error(tmp_path):
+    # Empty nested arrays are tiny on disk but used to RecursionError the reader.
+    depth = 80
+    array_type = 9  # GGUF ARRAY
+    u8_empty = struct.pack("<I", 0) + struct.pack("<Q", 0)  # array of 0 u8
+    payload = u8_empty
+    for _ in range(depth):
+        payload = struct.pack("<I", array_type) + struct.pack("<Q", 1) + payload
+    key = b"k"
+    kv = struct.pack("<Q", len(key)) + key + struct.pack("<I", array_type) + payload
+    data = (
+        b"GGUF"
+        + struct.pack("<I", 3)
+        + struct.pack("<Q", 0)
+        + struct.pack("<Q", 1)
+        + kv
+    )
+    path = tmp_path / "deep.gguf"
+    path.write_bytes(data)
+    with pytest.raises(AcquireError, match="nest too deeply"):
+        read_gguf_template(str(path))
+
+
 def test_multi_chunk_http_fetch():
     # ~1.6 MiB of metadata before the template forces more than one 1 MiB range fetch.
     payload = build_gguf(TEMPLATE, scores=420_000) + b"\x00" * (2 * 1024 * 1024)

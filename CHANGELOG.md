@@ -89,6 +89,12 @@ time. Corpus 0/120, wider 0/241, benchmark unchanged.
 error instead of crashing the analyzer), `--file auto` (pick the smallest `.gguf` quant in a
 repo), and gated/private-repo support via `HF_TOKEN` with clear errors.
 
+**Hardening (after 20).** Scan failures that used to traceback now return exit 2 (network
+errors, missing/unreadable files, directories, bad Ollama JSON, hostile nested GGUF
+arrays). `HF_TOKEN` is sent only to Hugging Face hosts and is not forwarded on redirects.
+`map` / `selectattr` / `rejectattr` attribute paths are analyzed the same way as `|attr`.
+`{% set %}` alias chains propagate. `getattr`'s default argument keeps its subtree.
+
 ## Standing properties
 
 These held across the phases above and are re-checked on any change:

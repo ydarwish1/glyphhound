@@ -33,7 +33,7 @@ from .models import (
     REFLECTION_BUILTINS,
     Finding,
 )
-from .taint import compute_reachable
+from .taint import attribute_filter_path, compute_reachable
 
 
 def analyze_raw(raw: RawTemplate) -> list[Finding]:
@@ -82,6 +82,10 @@ def _inspect(node: nodes.Node, template_name: str | None, reachable_ids: set[int
     so there is no double counting within a single node."""
     if isinstance(node, nodes.Filter) and node.name == "attr":
         _inspect_attr_filter(node, template_name, reachable_ids, out)
+    elif isinstance(node, nodes.Filter):
+        path = attribute_filter_path(node)
+        if path is not None:
+            _inspect_attribute_path(node, path, template_name, reachable_ids, out)
     elif isinstance(node, nodes.Getattr):
         _emit_if_dangerous(node.attr, f".{node.attr}", node, template_name, reachable_ids, out)
     elif isinstance(node, nodes.Getitem):
@@ -97,6 +101,22 @@ def _inspect(node: nodes.Node, template_name: str | None, reachable_ids: set[int
             _emit_if_dangerous(key, f"[{key!r}]", node, template_name, reachable_ids, out)
     elif isinstance(node, nodes.Name):
         _emit_if_dangerous(node.name, node.name, node, template_name, reachable_ids, out)
+
+
+def _inspect_attribute_path(node: nodes.Filter, path: str, template_name: str | None,
+                            reachable_ids: set[int], out: list[Finding]) -> None:
+    """``map`` / ``selectattr`` / ``rejectattr`` with a constant attribute path.
+
+    Jinja's attrgetter walks dotted paths (``__class__.__globals__``), so each segment
+    is classified the same way as a ``Getattr``. Benign paths (``attribute='role'``)
+    produce no finding -- these filters are ubiquitous in real chat templates.
+    """
+    for segment in path.split("."):
+        if segment:
+            _emit_if_dangerous(
+                segment, f"|{node.name}(attribute={segment!r})",
+                node, template_name, reachable_ids, out,
+            )
 
 
 def _inspect_attr_filter(node: nodes.Filter, template_name: str | None,
