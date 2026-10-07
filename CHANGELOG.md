@@ -101,7 +101,8 @@ scanned, else 0. JSON prints a list with one report per target, and SARIF one ru
 target as an artifact (a line region only for raw template files). One target is unchanged in
 every format. The human report and stderr show non-printable characters in template names,
 evidence and error messages as escapes, and JSON and SARIF write them as `\u` escapes. A stdin
-template that is not UTF-8 now exits 2 instead of crashing.
+template that is not UTF-8 now exits 2 instead of crashing, and a file name that is not UTF-8
+is percent-encoded byte by byte in SARIF.
 
 ## Standing properties
 

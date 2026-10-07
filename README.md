@@ -179,9 +179,10 @@ whose `artifacts` list every target: each result points at its target, the templ
 from is the result's logical location, and a target that could not be scanned is an error
 notification on the run's invocation. A relative path, repo id or model name is a relative URI
 with every character but `/` percent-encoded (a literal `%` too), an absolute path a `file:`
-URI, and a URL keeps its own escapes. A result has a line region only when its target is the
-raw template file; for a GGUF, a Hugging Face or an Ollama target the template line is the
-location's `templateLine` property instead. With one target, every format is the same as
+URI, and a URL keeps its own escapes (a `%` that starts no escape becomes `%25`). A result has
+a line region only when its target is the raw template file; for any other target (a local or
+URL GGUF, a Hugging Face repo, an Ollama model, stdin) the template line is the location's
+`templateLine` property instead. With one target, every format is the same as
 before. A stdin template that is not UTF-8 is reported and exits 2, as a file does.
 
 Options:
@@ -212,6 +213,8 @@ terminal or viewer.
 - In multi-target SARIF a Hugging Face, Ollama or URL target is listed as an artifact URI that
   is not a file in your repository, so code scanning cannot link it to a source file. Pass
   local files as paths relative to the repository root for code scanning to link them.
+- In multi-target SARIF a stdin target is the artifact URI `-`, which code scanning reads as a
+  file named `-` in the repository.
 
 ## Testing and verification
 

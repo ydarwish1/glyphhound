@@ -19,6 +19,7 @@ only and never renders a template.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from urllib.parse import quote
 
@@ -42,6 +43,7 @@ _RULE_INDEX = {rid: i for i, rid in enumerate(_RULE_IDS)}
 # The RFC 3986 reserved characters plus "%" (an already-encoded URL stays as given): an
 # http(s) target keeps these and percent-encodes everything else that is not unreserved.
 _URI_SAFE = ":/?#[]@!$&'()*+,;=%"
+_STRAY_PERCENT = re.compile(r"%(?![0-9A-Fa-f]{2})")
 
 
 def _level(severity: str) -> str:
@@ -167,13 +169,15 @@ def _target_uri(target: str) -> str:
     path becomes a ``file:`` URI; anything else (a relative path, a repo id, an Ollama name,
     ``-``) is a relative reference with every character but ``/`` percent-encoded, so a
     literal ``%``, ``:`` or ``\\`` in it cannot read as an escape, a scheme or a new file.
+    A ``%`` in a URL that does not start an escape is encoded as ``%25``. A name that is
+    not valid UTF-8 (lone surrogates from a POSIX argv) has its original bytes encoded.
     """
     if target.startswith(("http://", "https://")):
-        return quote(target, safe=_URI_SAFE)
+        return quote(_STRAY_PERCENT.sub("%25", target), safe=_URI_SAFE, errors="surrogateescape")
     path = Path(target)
     if path.is_absolute():
         return path.as_uri()
-    return quote(path.as_posix(), safe="/")
+    return quote(path.as_posix(), safe="/", errors="surrogateescape")
 
 
 def render_sarif_targets(results: list[TargetResult]) -> str:

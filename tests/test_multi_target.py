@@ -11,6 +11,7 @@ from __future__ import annotations
 import io
 import json
 import os
+import sys
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -372,6 +373,7 @@ def test_sarif_target_uris_by_kind(tmp_path):
     absolute = str(tmp_path / "a b%.jinja")
     targets = {
         "https://host.example/m.gguf?rev=%41&x=a b": "https://host.example/m.gguf?rev=%41&x=a%20b",
+        "https://host.example/100%.gguf?p=%zz&q=%": "https://host.example/100%25.gguf?p=%25zz&q=%25",
         absolute: Path(absolute).as_uri(),
         "owner/name": "owner/name",
         "llama3:8b": "llama3%3A8b",  # not read as a URI with scheme "llama3"
@@ -394,3 +396,25 @@ def test_sarif_backslash_path_is_not_a_uri_scheme():
     uri = doc["runs"][0]["artifacts"][0]["location"]["uri"]
     assert uri == "C%3A%5Cx%5Ca.jinja"
     assert urlsplit(uri).scheme == ""
+
+
+@pytest.mark.skipif(os.name == "nt" or sys.getfilesystemencoding().lower() != "utf-8",
+                    reason="needs a POSIX file system that decodes names with surrogateescape")
+@pytest.mark.parametrize("fmt", ["human", "json", "sarif"])
+def test_non_utf8_file_name_is_reported_in_every_format(tmp_path, monkeypatch, capsys, fmt):
+    monkeypatch.chdir(tmp_path)
+    name = os.fsdecode(b"bad\xff.jinja")  # holds a lone surrogate, as a POSIX argv would
+    Path(name).write_text(MALICIOUS, encoding="utf-8")
+
+    rc, out, _ = _run(capsys, name, BENIGN_PATH, "--format", fmt)
+
+    assert rc == 1
+    out.encode("utf-8")  # no lone surrogate reaches stdout
+    if fmt == "sarif":
+        doc = json.loads(out)
+        assert _sarif_errors(doc) == []
+        assert doc["runs"][0]["artifacts"][0] == {"location": {"uri": "bad%FF.jinja"}}
+    elif fmt == "json":
+        assert json.loads(out)[0]["target"] == name
+    else:
+        assert "=== target: bad\\udcff.jinja ===" in out
