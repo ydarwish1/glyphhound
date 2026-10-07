@@ -19,11 +19,12 @@ only and never renders a template.
 
 from __future__ import annotations
 
-import json
+from pathlib import Path
 from urllib.parse import quote
 
 from .. import __version__
 from ..analyze.models import CRITICAL, HIGH, RULE_CATALOG, cwe_for
+from .json_report import dump_json
 from .models import Report, TargetResult, gates_ci
 
 # An informational pointer to the schema the output conforms to (a constant, so it does
@@ -38,8 +39,8 @@ SEVERITY_TO_SARIF_LEVEL: dict[str, str] = {CRITICAL: "error", HIGH: "warning"}
 _RULE_IDS = sorted(RULE_CATALOG)
 _RULE_INDEX = {rid: i for i, rid in enumerate(_RULE_IDS)}
 
-# The RFC 3986 reserved characters plus "%" (an already-encoded reference stays as given):
-# a target URI keeps these and percent-encodes everything else that is not unreserved.
+# The RFC 3986 reserved characters plus "%" (an already-encoded URL stays as given): an
+# http(s) target keeps these and percent-encodes everything else that is not unreserved.
 _URI_SAFE = ":/?#[]@!$&'()*+,;=%"
 
 
@@ -95,13 +96,21 @@ def _template_location(finding) -> dict:
         {"artifactLocation": {"uri": _template_uri(finding.template_name)}}, finding)}
 
 
-def _target_location(finding, artifact_location: dict) -> dict:
+def _target_location(finding, artifact_location: dict, template_file: bool) -> dict:
     """Several targets: the artifact is the scanned target, and the metadata key the
-    template came from becomes the location's logical location."""
-    return {
-        "physicalLocation": _with_region({"artifactLocation": dict(artifact_location)}, finding),
+    template came from becomes the location's logical location. The template line is a
+    line of the artifact only when the target is the raw template file, so only then is it
+    the region; it always rides along as the location's ``templateLine`` property."""
+    physical_location: dict = {"artifactLocation": dict(artifact_location)}
+    if template_file:
+        _with_region(physical_location, finding)
+    location: dict = {
+        "physicalLocation": physical_location,
         "logicalLocations": [{"fullyQualifiedName": _template_uri(finding.template_name)}],
     }
+    if finding.source_line and finding.source_line >= 1:
+        location["properties"] = {"templateLine": finding.source_line}
+    return location
 
 
 def _result(finding, severity_threshold: str, location: dict) -> dict:
@@ -140,7 +149,7 @@ def _document(run: dict) -> str:
             **run,
         }],
     }
-    return json.dumps(doc, indent=2, ensure_ascii=False) + "\n"
+    return dump_json(doc)
 
 
 def render_sarif(report: Report) -> str:
@@ -152,9 +161,19 @@ def render_sarif(report: Report) -> str:
 
 
 def _target_uri(target: str) -> str:
-    """A target reference as a SARIF URI reference: characters a URI cannot hold (spaces,
-    control characters, non-ASCII) are percent-encoded; reserved ones are kept."""
-    return quote(target, safe=_URI_SAFE)
+    """A target reference as a SARIF URI reference.
+
+    An http(s) URL keeps its reserved characters and existing escapes; an absolute local
+    path becomes a ``file:`` URI; anything else (a relative path, a repo id, an Ollama name,
+    ``-``) is a relative reference with every character but ``/`` percent-encoded, so a
+    literal ``%``, ``:`` or ``\\`` in it cannot read as an escape, a scheme or a new file.
+    """
+    if target.startswith(("http://", "https://")):
+        return quote(target, safe=_URI_SAFE)
+    path = Path(target)
+    if path.is_absolute():
+        return path.as_uri()
+    return quote(path.as_posix(), safe="/")
 
 
 def render_sarif_targets(results: list[TargetResult]) -> str:
@@ -179,8 +198,9 @@ def render_sarif_targets(results: list[TargetResult]) -> str:
             })
             continue
         threshold = target.report.summary.severity_threshold
-        sarif_results.extend(_result(f, threshold, _target_location(f, artifact_location))
-                             for f in target.report.findings)
+        for f in target.report.findings:
+            location = _target_location(f, artifact_location, target.template_file)
+            sarif_results.append(_result(f, threshold, location))
     return _document({
         "artifacts": artifacts,
         "invocations": [{

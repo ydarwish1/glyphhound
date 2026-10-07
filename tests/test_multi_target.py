@@ -11,6 +11,8 @@ from __future__ import annotations
 import io
 import json
 import os
+from pathlib import Path
+from urllib.parse import urlsplit
 
 import pytest
 from jsonschema import Draft7Validator
@@ -24,18 +26,22 @@ from glyphhound.report import (
     render_human,
     render_json,
     render_sarif,
+    render_sarif_targets,
     targets_exit_code,
 )
+from glyphhound.report.json_report import dump_json
 from glyphhound.scan import scan_source
 from synthetic import build_gguf
 
 ROOT = os.path.dirname(os.path.dirname(__file__))
 MALICIOUS_PATH = os.path.join(ROOT, "fixtures", "malicious", "cve_2024_34359_marker.jinja")
 BENIGN_PATH = os.path.join(ROOT, "fixtures", "benign", "Qwen__Qwen2.5-0.5B-Instruct-GGUF.jinja")
-MALICIOUS = open(MALICIOUS_PATH, encoding="utf-8").read()
+MALICIOUS = Path(MALICIOUS_PATH).read_text(encoding="utf-8")
 SARIF_SCHEMA_PATH = os.path.join(ROOT, "schemas", "sarif-2.1.0.json")
 ESC = "\x1b"
-RLO = "‮"  # RIGHT-TO-LEFT OVERRIDE
+RLO = "\u202e"  # RIGHT-TO-LEFT OVERRIDE
+CSI = "\x9b"  # C1 CONTROL SEQUENCE INTRODUCER
+LINE_SEPARATOR = "\u2028"
 
 
 @pytest.fixture(autouse=True)
@@ -54,8 +60,13 @@ def _missing(tmp_path) -> str:
     return str(tmp_path / "missing" / "template.jinja")
 
 
+def _stdin(monkeypatch, data: bytes) -> None:
+    """Feed ``data`` to the CLI as stdin bytes (the CLI reads ``sys.stdin.buffer``)."""
+    monkeypatch.setattr("sys.stdin", io.TextIOWrapper(io.BytesIO(data), encoding="utf-8"))
+
+
 def _sarif_errors(doc: dict) -> list:
-    schema = json.load(open(SARIF_SCHEMA_PATH, encoding="utf-8"))
+    schema = json.loads(Path(SARIF_SCHEMA_PATH).read_text(encoding="utf-8"))
     return [(list(e.path), e.message) for e in Draft7Validator(schema).iter_errors(doc)]
 
 
@@ -155,13 +166,37 @@ def test_odd_inputs_among_targets_are_reported_not_crashed(tmp_path, capsys):
 
 
 def test_stdin_target_is_read_once_among_others(monkeypatch, capsys):
-    monkeypatch.setattr("sys.stdin", io.StringIO(MALICIOUS))
+    _stdin(monkeypatch, MALICIOUS.encode("utf-8"))
     rc, out, _ = _run(capsys, "-", BENIGN_PATH, "-", "--format", "json")
 
     reports = json.loads(out)
     assert rc == 1
     assert [r["target"] for r in reports] == ["-", BENIGN_PATH]
     assert reports[0]["exit_code"] == 1
+
+
+@pytest.mark.parametrize("others, expected", [
+    ((BENIGN_PATH,), 2),
+    ((BENIGN_PATH, MALICIOUS_PATH), 1),
+])
+def test_undecodable_stdin_among_targets_is_reported_not_crashed(monkeypatch, capsys,
+                                                                   others, expected):
+    _stdin(monkeypatch, b"{{ messages }}\xff\xfe")
+    rc, out, err = _run(capsys, "-", *others, "--format", "json")
+
+    reports = json.loads(out)
+    assert rc == expected
+    assert [r["target"] for r in reports] == ["-", *others]  # every target still reported
+    assert reports[0]["exit_code"] == 2
+    assert "stdin: template is not valid UTF-8" in reports[0]["error"]
+    assert err.startswith("glyphhound: -: stdin: template is not valid UTF-8")
+
+
+def test_undecodable_stdin_alone_exits_2(monkeypatch, capsys):
+    _stdin(monkeypatch, b"\xff")
+    rc, out, err = _run(capsys, "-")
+    assert (rc, out) == (2, "")
+    assert err.startswith("glyphhound: stdin: template is not valid UTF-8")
 
 
 def test_options_apply_to_every_target(capsys):
@@ -199,7 +234,7 @@ def test_hostile_target_and_error_text_are_escaped(monkeypatch, capsys):
         raise AcquireError(f"bad header {ESC}[2J{RLO}")
     monkeypatch.setattr("glyphhound.cli.scan_source", fail)
 
-    rc, out, err = _run(capsys, f"owner/{ESC}[31mname", "other/name")
+    rc, out, err = _run(capsys, f"owner/{ESC}[31mname", "other/name", "--source", "hf")
 
     assert rc == 2
     assert ESC not in out + err and RLO not in out + err
@@ -210,6 +245,29 @@ def test_hostile_target_and_error_text_are_escaped(monkeypatch, capsys):
     rc, out, err = _run(capsys, "owner/name")
     assert (rc, out) == (2, "")
     assert err == "glyphhound: bad header \\x1b[2J\\u202e\n"
+
+
+def test_dump_json_escapes_non_printable_and_keeps_readable_text():
+    value = {"name": f"café {RLO}{CSI}{LINE_SEPARATOR}\U000e0001{ESC}"}
+    text = dump_json(value)
+    assert text == ('{\n  "name": "café \\u202e\\u009b\\u2028\\udb40\\udc01\\u001b"\n}\n')
+    assert json.loads(text) == value
+
+
+@pytest.mark.parametrize("fmt", ["json", "sarif"])
+def test_hostile_values_are_escaped_in_json_and_sarif(tmp_path, capsys, fmt):
+    hostile = f"tool{RLO}{CSI}31m{LINE_SEPARATOR}"
+    path = tmp_path / "model.gguf"
+    path.write_bytes(build_gguf(chat_template="hi",
+                                named_templates={f"tokenizer.chat_template.{hostile}": MALICIOUS}))
+    missing = str(tmp_path / f"missing{RLO}{CSI}" / "t.jinja")  # a hostile target name
+
+    for argv in ([str(path)], [str(path), missing]):
+        rc, out, _ = _run(capsys, *argv, "--format", fmt)
+        assert rc == 1
+        assert not any(ch in out for ch in (RLO, CSI, LINE_SEPARATOR))
+        assert "tool\\u202e\\u009b31m\\u2028" in out
+        assert hostile in json.dumps(json.loads(out), ensure_ascii=False)  # the value reads back
 
 
 # --------------------------------------------------------------------------- #
@@ -249,7 +307,7 @@ def test_sarif_is_one_valid_run_listing_every_target(tmp_path, capsys):
     assert len(doc["runs"]) == 1
     run = doc["runs"][0]
     assert [a["location"]["uri"] for a in run["artifacts"]] == \
-        [MALICIOUS_PATH, str(gguf), missing, BENIGN_PATH]
+        [Path(p).as_uri() for p in (MALICIOUS_PATH, gguf, missing, BENIGN_PATH)]
 
     by_artifact: dict[int, list] = {}
     for result in run["results"]:
@@ -263,7 +321,13 @@ def test_sarif_is_one_valid_run_listing_every_target(tmp_path, capsys):
         {"tokenizer.chat_template"}
     assert {loc["logicalLocations"][0]["fullyQualifiedName"] for loc in by_artifact[1]} == \
         {"tokenizer.chat_template.tool_use"}
-    assert all(loc["physicalLocation"]["region"]["startLine"] >= 1 for loc in by_artifact[0])
+    # A raw template file: the template line is a line of the artifact, so it is the region.
+    assert all(loc["physicalLocation"]["region"]["startLine"] == loc["properties"]["templateLine"]
+               for loc in by_artifact[0])
+    # A GGUF: the template line is not a line of the binary file, so there is no region and
+    # the line rides along as a property only.
+    assert all("region" not in loc["physicalLocation"] for loc in by_artifact[1])
+    assert all(loc["properties"]["templateLine"] >= 1 for loc in by_artifact[1])
 
     invocation, = run["invocations"]
     assert invocation["executionSuccessful"] is False
@@ -271,7 +335,7 @@ def test_sarif_is_one_valid_run_listing_every_target(tmp_path, capsys):
     assert notification["level"] == "error"
     assert "could not determine" in notification["message"]["text"]
     assert notification["locations"][0]["physicalLocation"]["artifactLocation"] == \
-        {"uri": missing, "index": 2}
+        {"uri": Path(missing).as_uri(), "index": 2}
 
 
 def test_sarif_all_scanned_is_a_successful_invocation(capsys):
@@ -283,20 +347,50 @@ def test_sarif_all_scanned_is_a_successful_invocation(capsys):
     assert gating and all(gating)
 
 
-def test_sarif_target_uris_are_encoded_and_unique(tmp_path, monkeypatch, capsys):
+def test_sarif_distinct_local_files_get_distinct_uris(tmp_path, monkeypatch, capsys):
     monkeypatch.chdir(tmp_path)
-    (tmp_path / "my templateé.jinja").write_text(MALICIOUS, encoding="utf-8")
+    names = ["my template\u00e9.jinja", "my%20template%C3%A9.jinja", "100%.jinja"]
+    for name in names:
+        (tmp_path / name).write_text(MALICIOUS, encoding="utf-8")
 
-    rc, out, _ = _run(capsys, "my templateé.jinja", "my%20template%C3%A9.jinja",
-                      "--format", "sarif")
+    rc, out, _ = _run(capsys, *names, "--format", "sarif")
 
     doc = json.loads(out)
     run = doc["runs"][0]
     assert rc == 1
     assert _sarif_errors(doc) == []
-    # Both spellings name one URI, so the run lists one artifact that both point at.
-    assert run["artifacts"] == [{"location": {"uri": "my%20template%C3%A9.jinja"}}]
-    notification, = run["invocations"][0]["toolExecutionNotifications"]
-    assert notification["locations"][0]["physicalLocation"]["artifactLocation"]["index"] == 0
-    assert all(r["locations"][0]["physicalLocation"]["artifactLocation"]["index"] == 0
-               for r in run["results"])
+    # A literal "%" is encoded too, so a file named like another's encoding stays its own.
+    assert [a["location"]["uri"] for a in run["artifacts"]] == [
+        "my%20template%C3%A9.jinja", "my%2520template%25C3%25A9.jinja", "100%25.jinja"]
+    per_artifact = len(scan_source(names[0]).findings)
+    indexes = [r["locations"][0]["physicalLocation"]["artifactLocation"]["index"]
+               for r in run["results"]]
+    assert indexes == [0] * per_artifact + [1] * per_artifact + [2] * per_artifact
+
+
+def test_sarif_target_uris_by_kind(tmp_path):
+    absolute = str(tmp_path / "a b%.jinja")
+    targets = {
+        "https://host.example/m.gguf?rev=%41&x=a b": "https://host.example/m.gguf?rev=%41&x=a%20b",
+        absolute: Path(absolute).as_uri(),
+        "owner/name": "owner/name",
+        "llama3:8b": "llama3%3A8b",  # not read as a URI with scheme "llama3"
+        "./sub/t.jinja": "sub/t.jinja",
+        "-": "-",
+    }
+    results = [TargetResult(t, error="unscanned") for t in targets]
+
+    doc = json.loads(render_sarif_targets(results))
+
+    uris = [a["location"]["uri"] for a in doc["runs"][0]["artifacts"]]
+    assert uris == list(targets.values())
+    assert {urlsplit(u).scheme for u in uris} == {"", "file", "https"}
+    assert _sarif_errors(doc) == []
+
+
+@pytest.mark.skipif(os.name == "nt", reason="a backslash is a path separator on Windows")
+def test_sarif_backslash_path_is_not_a_uri_scheme():
+    doc = json.loads(render_sarif_targets([TargetResult("C:\\x\\a.jinja", error="unscanned")]))
+    uri = doc["runs"][0]["artifacts"][0]["location"]["uri"]
+    assert uri == "C%3A%5Cx%5Ca.jinja"
+    assert urlsplit(uri).scheme == ""

@@ -28,6 +28,7 @@ import argparse
 import sys
 
 from .acquire import AcquireError
+from .acquire.models import decode_utf8_or_raise
 from .analyze.models import CRITICAL, HIGH
 from .parse import ParseError
 from .report import (
@@ -42,7 +43,14 @@ from .report import (
     render_sarif_targets,
     targets_exit_code,
 )
-from .scan import AUTO, SOURCES, ScanError, scan_source, scan_template_string
+from .scan import (
+    AUTO,
+    SOURCES,
+    ScanError,
+    resolve_source,
+    scan_source,
+    scan_template_string,
+)
 
 _RENDERERS = {"human": render_human, "json": render_json, "sarif": render_sarif}
 _TARGET_RENDERERS = {"human": render_human_targets, "json": render_json_targets,
@@ -91,8 +99,10 @@ def _build_parser() -> argparse.ArgumentParser:
 def _scan(ref: str, args: argparse.Namespace) -> Report:
     """Scan one target with the CLI options; raises one of :data:`_SCAN_ERRORS` on failure."""
     if ref == "-":
+        # Read bytes, so a template that is not UTF-8 fails cleanly (exit 2) as a file does.
+        text = decode_utf8_or_raise(sys.stdin.buffer.read(), "stdin", "template")
         return scan_template_string(
-            sys.stdin.read(), template_name=args.template_name,
+            text, template_name=args.template_name,
             severity_threshold=args.threshold, confirm=args.confirm,
         )
     return scan_source(
@@ -104,7 +114,8 @@ def _scan(ref: str, args: argparse.Namespace) -> Report:
 def _scan_target(ref: str, args: argparse.Namespace) -> TargetResult:
     """Scan one of several targets; a failure is recorded (and told on stderr), not raised."""
     try:
-        return TargetResult(ref, report=_scan(ref, args))
+        template_file = ref != "-" and resolve_source(ref, args.source) == "file"
+        return TargetResult(ref, report=_scan(ref, args), template_file=template_file)
     except _SCAN_ERRORS as exc:
         sys.stderr.write(f"glyphhound: {display_text(ref)}: {display_text(str(exc))}\n")
         return TargetResult(ref, error=str(exc))

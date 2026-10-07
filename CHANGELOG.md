@@ -98,8 +98,10 @@ arrays). `HF_TOKEN` is sent only to Hugging Face hosts and is not forwarded on r
 **Several targets in one scan.** `glyphhound scan A B C` scans each target and reports each
 under its own heading; the exit code is 1 if any target gates CI, else 2 if any could not be
 scanned, else 0. JSON prints a list with one report per target, and SARIF one run listing every
-target as an artifact. One target is unchanged in every format. The human report and stderr
-show non-printable characters in template names, evidence and error messages as escapes.
+target as an artifact (a line region only for raw template files). One target is unchanged in
+every format. The human report and stderr show non-printable characters in template names,
+evidence and error messages as escapes, and JSON and SARIF write them as `\u` escapes. A stdin
+template that is not UTF-8 now exits 2 instead of crashing.
 
 ## Standing properties
 

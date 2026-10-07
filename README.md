@@ -177,7 +177,12 @@ list with one report per target, each with a `target` field; a target that could
 scanned has `exit_code` 2 and an `error` instead of findings. `--format sarif` prints one run
 whose `artifacts` list every target: each result points at its target, the template key it came
 from is the result's logical location, and a target that could not be scanned is an error
-notification on the run's invocation. With one target, every format is the same as before.
+notification on the run's invocation. A relative path, repo id or model name is a relative URI
+with every character but `/` percent-encoded (a literal `%` too), an absolute path a `file:`
+URI, and a URL keeps its own escapes. A result has a line region only when its target is the
+raw template file; for a GGUF, a Hugging Face or an Ollama target the template line is the
+location's `templateLine` property instead. With one target, every format is the same as
+before. A stdin template that is not UTF-8 is reported and exits 2, as a file does.
 
 Options:
 
@@ -196,14 +201,17 @@ be scanned, else 0.
 
 In the human report and in error messages on stderr, characters that cannot be printed (ANSI
 escapes, other control characters, bidi overrides, line breaks) in template names, evidence,
-targets and error messages are shown as Python escapes such as `\x1b`.
+targets and error messages are shown as Python escapes such as `\x1b`. JSON and SARIF write
+every such character as a `\u` escape, so the value reads back unchanged but cannot drive a
+terminal or viewer.
 
 ### Known limits
 
 - Targets are compared as typed: `a.jinja` and `./a.jinja` are two targets and are scanned
   twice.
 - In multi-target SARIF a Hugging Face, Ollama or URL target is listed as an artifact URI that
-  is not a file in your repository, so code scanning cannot link it to a source file.
+  is not a file in your repository, so code scanning cannot link it to a source file. Pass
+  local files as paths relative to the repository root for code scanning to link them.
 
 ## Testing and verification
 

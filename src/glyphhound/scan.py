@@ -100,7 +100,7 @@ def scan_source(ref: str, *, source: str = AUTO, filename: str | None = None,
 
 def _acquire(ref: str, *, source: str, filename: str | None, revision: str) -> RawTemplate:
     """Resolve ``ref`` to a :class:`~.acquire.RawTemplate`, dispatching on the source kind."""
-    kind = source if source != AUTO else _detect_source(ref)
+    kind = resolve_source(ref, source)
 
     if kind == "gguf-url":
         if not _url_path(ref).lower().endswith(".gguf"):
@@ -124,6 +124,11 @@ def _acquire(ref: str, *, source: str, filename: str | None, revision: str) -> R
     if kind == "file":
         return _wrap_template_file(ref)
     raise ScanError(f"unknown source type {source!r}")
+
+
+def resolve_source(ref: str, source: str = AUTO) -> str:
+    """The source kind ``ref`` is read as: ``source`` itself, or the detected kind for auto."""
+    return source if source != AUTO else _detect_source(ref)
 
 
 def _detect_source(ref: str) -> str:

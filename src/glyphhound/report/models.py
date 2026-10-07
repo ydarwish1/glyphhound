@@ -48,6 +48,11 @@ def gates_ci(finding: Finding, severity_threshold: str) -> bool:
     return finding.reachable is True and _rank(finding.severity) >= _rank(severity_threshold)
 
 
+def _header(exit_code: int) -> dict:
+    """The keys every JSON report starts with."""
+    return {"tool": "glyphhound", "version": __version__, "exit_code": exit_code}
+
+
 def _finding_to_dict(f: Finding) -> dict:
     d = {k: getattr(f, k) for k in _FINDING_FIELDS}
     # CWE is a property of the rule (analyze/models.RULE_CATALOG), derived here rather than
@@ -102,9 +107,7 @@ class Report:
 
     def to_dict(self) -> dict:
         return {
-            "tool": "glyphhound",
-            "version": __version__,
-            "exit_code": self.exit_code,
+            **_header(self.exit_code),
             "summary": self.summary.to_dict(),
             "findings": [_finding_to_dict(f) for f in self.findings],
         }
@@ -145,6 +148,9 @@ class TargetResult:
     target: str
     report: Report | None = None
     error: str | None = None
+    # True when the target is the raw template file itself, so a template line is a line of
+    # the target (not of a GGUF, a JSON config or a remote model).
+    template_file: bool = False
 
     @property
     def exit_code(self) -> int:
@@ -153,13 +159,7 @@ class TargetResult:
     def to_dict(self) -> dict:
         if self.report is not None:
             return {"target": self.target, **self.report.to_dict()}
-        return {
-            "target": self.target,
-            "tool": "glyphhound",
-            "version": __version__,
-            "exit_code": 2,
-            "error": self.error,
-        }
+        return {"target": self.target, **_header(2), "error": self.error}
 
 
 def targets_exit_code(results: Iterable[TargetResult]) -> int:

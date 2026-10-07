@@ -252,7 +252,7 @@ def test_cli_hf_missing_file_exits_2(monkeypatch, capsys):
 
 
 def test_cli_stdin_still_works(monkeypatch, capsys):
-    monkeypatch.setattr("sys.stdin", io.StringIO(MALICIOUS))
+    monkeypatch.setattr("sys.stdin", io.TextIOWrapper(io.BytesIO(MALICIOUS.encode("utf-8"))))
 
     rc = main(["scan", "-", "--format", "json"])
 
