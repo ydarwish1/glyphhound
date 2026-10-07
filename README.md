@@ -166,7 +166,24 @@ python -m glyphhound scan owner/name --file model.Q4.gguf
 python -m glyphhound scan ollama-model-name
 python -m glyphhound scan template.jinja                  # a local template file
 cat template.jinja | python -m glyphhound scan -          # stdin
+python -m glyphhound scan a.jinja model.gguf owner/name   # several targets in one run
 ```
+
+Several targets are scanned one by one, and each is reported under its own
+`=== target: <ref> ===` heading, followed by an `overall:` line. The options apply to every
+target, and a target given twice is scanned once. A target that cannot be scanned is reported
+under its heading (and on stderr) while the others are still scanned. `--format json` prints a
+list with one report per target, each with a `target` field; a target that could not be
+scanned has `exit_code` 2 and an `error` instead of findings. `--format sarif` prints one run
+whose `artifacts` list every target: each result points at its target, the template key it came
+from is the result's logical location, and a target that could not be scanned is an error
+notification on the run's invocation. A relative path, repo id or model name is a relative URI
+with every character but `/` percent-encoded (a literal `%` too), an absolute path a `file:`
+URI, and a URL keeps its own escapes (a `%` that starts no escape becomes `%25`). A result has
+a line region only when its target is the raw template file; for any other target (a local or
+URL GGUF, a Hugging Face repo, an Ollama model, stdin) the template line is the location's
+`templateLine` property instead. With one target, every format is the same as
+before. A stdin template that is not UTF-8 is reported and exits 2, as a file does.
 
 Options:
 
@@ -180,7 +197,24 @@ Options:
 Set `HF_TOKEN` for gated/private repos and higher Hub rate limits.
 
 Exit codes (for CI): 0 = clean, 1 = a reachable finding gates the build, 2 = the scan could
-not run.
+not run. With several targets: 1 if any target gates the build, else 2 if any target could not
+be scanned, else 0.
+
+In the human report and in error messages on stderr, characters that cannot be printed (ANSI
+escapes, other control characters, bidi overrides, line breaks) in template names, evidence,
+targets and error messages are shown as Python escapes such as `\x1b`. JSON and SARIF write
+every such character as a `\u` escape, so the value reads back unchanged but cannot drive a
+terminal or viewer.
+
+### Known limits
+
+- Targets are compared as typed: `a.jinja` and `./a.jinja` are two targets and are scanned
+  twice.
+- In multi-target SARIF a Hugging Face, Ollama or URL target is listed as an artifact URI that
+  is not a file in your repository, so code scanning cannot link it to a source file. Pass
+  local files as paths relative to the repository root for code scanning to link them.
+- In multi-target SARIF a stdin target is the artifact URI `-`, which code scanning reads as a
+  file named `-` in the repository.
 
 ## Testing and verification
 
