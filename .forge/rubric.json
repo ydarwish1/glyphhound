@@ -1,0 +1,82 @@
+{
+  "categories": [
+    {
+      "key": "step",
+      "title": "Roadmap step",
+      "weight": 30,
+      "criteria": [
+        "Implements exactly the ROADMAP.md step named in the pull request title, and ticks its box in the same change",
+        "Every behaviour the step describes works through glyphhound scan, not only inside a helper",
+        "Nothing the step asks for is missing, stubbed or left as a TODO"
+      ]
+    },
+    {
+      "key": "safety",
+      "title": "Detection safety",
+      "weight": 25,
+      "criteria": [
+        "Detection never gets weaker: no sink, de-obfuscation, fixture or test is removed, loosened or skipped; every malicious fixture still gates and the benign fixtures and corpus still have zero findings",
+        "Nothing scanned today stops being scanned or starts exiting 0: an input that cannot be read or parsed exits 2 and is reported, never skipped",
+        "Templates are never rendered outside the --confirm sandbox, weights are never downloaded, and no new network call is added",
+        "A value taken from a template or model and shown to the user (human, Markdown, JSON, SARIF) cannot inject markup, escape codes or links"
+      ]
+    },
+    {
+      "key": "correctness",
+      "title": "Correctness",
+      "weight": 15,
+      "criteria": [
+        "Exit codes hold: 0 clean, 1 a finding gates CI, 2 the scan could not run",
+        "JSON and SARIF stay valid (SARIF against the vendored 2.1.0 schema), and with one target every format is unchanged",
+        "Odd input is handled without a crash: empty, unreadable or huge files, bad encodings, symlinks, truncated GGUF headers"
+      ]
+    },
+    {
+      "key": "tests",
+      "title": "Tests",
+      "weight": 20,
+      "criteria": [
+        "python -m pytest passes offline, and every new behaviour has a test in tests/",
+        "Tests cover real edge cases, not only the happy path, and never use the network",
+        "Tests use temporary directories and committed fixtures, never the developer's home directory"
+      ]
+    },
+    {
+      "key": "quality",
+      "title": "Code quality and docs",
+      "weight": 10,
+      "criteria": [
+        "jinja2 stays the only runtime dependency, and it runs on Python 3.10 to 3.13",
+        "Matches the code's existing style: small functions, the same naming, no dead code or duplicate helpers",
+        "README Usage section and CHANGELOG.md change where behaviour changed"
+      ]
+    }
+  ],
+  "protected": [
+    ".github/",
+    ".claude/",
+    ".forge/",
+    "CLAUDE.md",
+    "AGENTS.md",
+    "CODEOWNERS",
+    "LICENSE",
+    "NOTICE",
+    "SECURITY.md",
+    "action/",
+    "src/glyphhound/analyze/",
+    "src/glyphhound/parse/",
+    "src/glyphhound/sandbox/",
+    "fixtures/",
+    "corpus/",
+    "benchmark/",
+    "study/",
+    "schemas/",
+    "tests/golden/",
+    "tests/test_analyze.py",
+    "tests/test_corpus_fp.py",
+    "tests/test_benchmark.py",
+    "tests/test_sandbox.py",
+    "pyproject.toml",
+    "requirements-dev.lock"
+  ]
+}
