@@ -136,3 +136,36 @@ def make_report(findings: Iterable[Finding], *,
         severity_threshold=severity_threshold,
     )
     return Report(findings=findings, summary=summary, exit_code=1 if gating else 0)
+
+
+@dataclass(frozen=True)
+class TargetResult:
+    """One target of a multi-target scan: its :class:`Report`, or why it could not be scanned."""
+
+    target: str
+    report: Report | None = None
+    error: str | None = None
+
+    @property
+    def exit_code(self) -> int:
+        return 2 if self.report is None else self.report.exit_code
+
+    def to_dict(self) -> dict:
+        if self.report is not None:
+            return {"target": self.target, **self.report.to_dict()}
+        return {
+            "target": self.target,
+            "tool": "glyphhound",
+            "version": __version__,
+            "exit_code": 2,
+            "error": self.error,
+        }
+
+
+def targets_exit_code(results: Iterable[TargetResult]) -> int:
+    """The exit code of a multi-target scan: 1 if any target gates CI, else 2 if any target
+    could not be scanned, else 0 (a gating finding outranks a failed target)."""
+    codes = {r.exit_code for r in results}
+    if 1 in codes:
+        return 1
+    return 2 if 2 in codes else 0
