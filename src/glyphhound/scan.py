@@ -32,7 +32,7 @@ from .acquire import (
     read_ollama_template,
     read_tokenizer_config_file,
 )
-from .acquire.hf_source import smallest_gguf_filename
+from .acquire.hf_source import _HF_SOURCE_MAX_BYTES, smallest_gguf_filename
 from .analyze import analyze_template
 from .report import DEFAULT_SEVERITY_THRESHOLD, Report, make_report
 
@@ -45,6 +45,8 @@ TOKENIZER_CONFIG = "tokenizer-config"
 _TOKENIZER_CONFIG_NAME = "tokenizer_config.json"
 # File suffixes a directory scan reads (matched case-insensitively), and how.
 _DIRECTORY_SUFFIXES = ((".jinja", "file"), (".gguf", "gguf"))
+# A raw template file is read whole, so it gets the same cap as a Hub metadata file.
+_MAX_TEMPLATE_FILE_BYTES = _HF_SOURCE_MAX_BYTES
 
 # A Hugging Face repo id is exactly ``owner/name`` (one slash, neither segment a path
 # fragment). An Ollama model is ``name[:tag]`` (no slash). Both start with an
@@ -164,30 +166,33 @@ def is_directory(ref: str, source: str = AUTO) -> bool:
 def find_template_files(directory: str) -> list[ScanTarget]:
     """Every ``*.jinja``, ``*.gguf`` and ``tokenizer_config.json`` under ``directory``.
 
-    Walked in sorted order without entering symlinked directories. Nothing is skipped
-    silently: a subdirectory that cannot be listed, a match that is a symlink out of
-    ``directory`` (not followed) and a match that is not a readable regular file are each
-    returned with an ``error``. Raises :class:`ScanError` if nothing matches.
+    Walked in sorted order without entering symlinked directories (one inside ``directory``
+    is walked at its real path). Nothing is skipped silently: a subdirectory that cannot be
+    listed, a directory symlink out of ``directory`` (not entered), a match that is a symlink
+    out of ``directory`` (not followed) and a match that is not a readable regular file are
+    each returned with an ``error``. Raises :class:`ScanError` if nothing matches.
     """
     root = os.path.realpath(directory)
     found: list[ScanTarget] = []
 
     def unlisted(exc: OSError) -> None:
-        path = exc.filename or directory
-        reason = f"{path!r}: cannot list directory ({exc.strerror or exc})"
-        found.append(ScanTarget(path, error=reason))
+        reason = f"cannot list directory ({exc.strerror or exc})"
+        found.append(ScanTarget(exc.filename or directory, error=reason))
 
     for parent, dirnames, filenames in os.walk(directory, onerror=unlisted):
         dirnames.sort()
+        for name in dirnames:
+            path = os.path.join(parent, name)
+            if os.path.islink(path) and not _is_within(os.path.realpath(path), root):
+                reason = "a directory symlink out of the scanned directory; not entered"
+                found.append(ScanTarget(path, error=reason))
         for name in sorted(filenames):
             source = _directory_source(name)
             if source is not None:
                 path = os.path.join(parent, name)
                 found.append(ScanTarget(path, source, _unreadable_reason(path, root)))
     if not found:
-        raise ScanError(
-            f"{directory!r}: no *.jinja, tokenizer_config.json or *.gguf file under it"
-        )
+        raise ScanError("no *.jinja, tokenizer_config.json or *.gguf file under it")
     return found
 
 
@@ -204,13 +209,13 @@ def _directory_source(name: str) -> str | None:
 def _unreadable_reason(path: str, root: str) -> str | None:
     """Why a directory scan must not read ``path`` (under the real directory ``root``)."""
     if not _is_within(os.path.realpath(path), root):
-        return f"{path!r}: a symlink out of the scanned directory; not followed"
+        return "a symlink out of the scanned directory; not followed"
     try:
         mode = os.stat(path).st_mode
     except OSError as exc:
-        return f"{path!r}: cannot read ({exc.strerror or exc})"
+        return f"cannot read ({exc.strerror or exc})"
     if not stat.S_ISREG(mode):
-        return f"{path!r}: not a regular file"
+        return "not a regular file"
     return None
 
 
@@ -266,12 +271,17 @@ def _wrap_template_file(path: str) -> RawTemplate:
 
     This is a bare template (not a model file), so there are no weights to avoid; the
     no-weights invariant does not apply and bytes_fetched == total_size by construction.
+    A file over :data:`_MAX_TEMPLATE_FILE_BYTES` is refused rather than read into memory.
     """
     try:
         with open(path, "rb") as fh:
-            data = fh.read()
+            data = fh.read(_MAX_TEMPLATE_FILE_BYTES + 1)
     except OSError as exc:
         raise ScanError(f"{path!r}: cannot read template file ({exc})") from exc
+    if len(data) > _MAX_TEMPLATE_FILE_BYTES:
+        raise ScanError(
+            f"{path!r}: template file exceeds the {_MAX_TEMPLATE_FILE_BYTES}-byte cap"
+        )
     try:
         text = data.decode("utf-8")
     except UnicodeDecodeError as exc:

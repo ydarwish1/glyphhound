@@ -21,16 +21,19 @@ unparseable template).
 Several references are scanned one by one and reported each under its own heading (JSON: a
 list with one report per target; SARIF: one run listing every target as an artifact). The
 exit code is then ``1`` if any target gates CI, else ``2`` if any could not be scanned,
-else ``0``. With one reference every format is exactly the single-target output.
+else ``0``. With one non-directory reference every format is exactly the single-target
+output.
 
 A directory (with the default ``--source auto``) stands for every ``*.jinja``, ``*.gguf`` and
 ``tokenizer_config.json`` file under it, each scanned as a target of its own; symlinks out of
-it are not followed. A match that cannot be read, or a directory with no match, exits 2.
+it are not followed but reported. A match that cannot be read, or a directory with no match,
+exits 2.
 """
 
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 
 from .acquire import AcquireError
@@ -52,6 +55,7 @@ from .report import (
 from .scan import (
     AUTO,
     SOURCES,
+    TOKENIZER_CONFIG,
     ScanTarget,
     ScanError,
     find_template_files,
@@ -136,12 +140,28 @@ def _expand(ref: str, args: argparse.Namespace) -> list[ScanTarget]:
         return [ScanTarget(ref, error=str(exc))]
 
 
+def _same_file_key(ref: str) -> str:
+    """``ref`` keyed so that two spellings of one local file (``./a/x``, ``a/x``) match: its
+    directory resolved, its own name kept (a symlink stays a target of its own)."""
+    if ref == "-" or not os.path.exists(ref):
+        return ref
+    # Not abspath: it folds ``..`` before resolving, which is wrong after a symlinked folder.
+    parent, name = os.path.split(os.path.join(os.getcwd(), ref))
+    return os.path.join(os.path.realpath(parent), name)
+
+
 def _targets(refs: list[str], args: argparse.Namespace) -> list[ScanTarget]:
-    """Every target to scan, in order; a file both typed and found in a directory, once."""
+    """Every target to scan, in order; a file both typed and found in a directory, once.
+
+    A ``tokenizer_config.json`` found in a directory is read as a config even when the same
+    file was also typed (which reads it as a raw template), in either order.
+    """
     targets: dict[str, ScanTarget] = {}
     for ref in refs:
         for target in _expand(ref, args):
-            targets.setdefault(target.ref, target)
+            key = _same_file_key(target.ref)
+            if key not in targets or (target.source == TOKENIZER_CONFIG and target.error is None):
+                targets[key] = target
     return list(targets.values())
 
 

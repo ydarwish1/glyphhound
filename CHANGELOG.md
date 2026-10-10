@@ -109,8 +109,10 @@ is percent-encoded byte by byte in SARIF.
 several targets are. A `tokenizer_config.json` is parsed as a config and every template in its
 `chat_template` is scanned. Symlinks out of DIR are not followed but reported. A match that
 cannot be read or parsed, or a subdirectory that cannot be listed, is reported and exits 2, and
-a directory with no matching file exits 2 saying so. A Hub `tokenizer_config.json` that is not
-UTF-8 or nests too deeply to parse now exits 2 cleanly as well.
+a directory with no matching file exits 2 saying so; so does a `tokenizer_config.json` with no
+template and no `chat_template.jinja` beside it. A template file over 32 MiB now exits 2 instead
+of being read whole, and two spellings of one local file are scanned once. A Hub
+`tokenizer_config.json` that is not UTF-8 or nests too deeply to parse now exits 2 cleanly too.
 
 ## Standing properties
 

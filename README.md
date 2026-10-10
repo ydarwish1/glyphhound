@@ -190,16 +190,19 @@ A local directory is searched, subdirectories included, for `*.jinja` (so `chat_
 too), `tokenizer_config.json` and `*.gguf` files (the suffixes in any case). Each file found is
 a target of its own, reported under its path in sorted order exactly as several targets are,
 even when only one file is found. A `tokenizer_config.json` is read as the Hub's copy is: every
-template in its `chat_template` (a string or a list of named templates) is scanned; one without
-a `chat_template` has nothing to scan and reports no findings (newer repos keep the template in
-`chat_template.jinja`, which is scanned on its own). Symlinked directories are not entered, and
-a matching symlink that points out of the directory is not followed: it is reported as a target
-that could not be scanned. A matching file that cannot be read or parsed (no permission, not a
-regular file, bad UTF-8 or JSON, a `tokenizer_config.json` over 32 MiB, a truncated GGUF), and a
+template in its `chat_template` (a string or a list of named templates) is scanned. One without
+a `chat_template` reports no findings when a `chat_template.jinja` sits beside it (newer repos
+keep the template there, and it is scanned on its own); otherwise it holds no template to scan
+and exits 2, as a GGUF without a template does. Symlinked directories are not entered (one that
+points inside the directory is walked at its real path), and a symlink, file or directory, that
+points out of the directory is not followed: it is reported as a target that could not be
+scanned. A matching file that cannot be read or parsed (no permission, not a regular file, bad
+UTF-8 or JSON, a template file or `tokenizer_config.json` over 32 MiB, a truncated GGUF), and a
 subdirectory that cannot be listed, is reported the same way and makes the scan exit 2; it is
 never skipped. A directory with no matching file exits 2 with a message saying so. A directory
-is searched only with the default `--source auto`, and a file found both in a directory and
-typed as its own target is scanned once.
+is searched only with the default `--source auto`. A local file given twice, spelled the same
+or not (`a/x.jinja`, `./a/x.jinja`), or both typed and found in a directory, is scanned once; a
+`tokenizer_config.json` found in a directory is then read as a config even if it was typed too.
 
 Options:
 
@@ -224,8 +227,7 @@ terminal or viewer.
 
 ### Known limits
 
-- Targets are compared as typed: `a.jinja` and `./a.jinja` are two targets and are scanned
-  twice.
+- A symlink and the file it points to are two targets and are scanned twice.
 - In multi-target SARIF a Hugging Face, Ollama or URL target is listed as an artifact URI that
   is not a file in your repository, so code scanning cannot link it to a source file. Pass
   local files as paths relative to the repository root for code scanning to link them.
@@ -237,7 +239,9 @@ terminal or viewer.
   files are scanned under their real path instead.
 - A `tokenizer_config.json` typed as a target on its own (not found in a directory) is still
   read as a raw template, as before; scan its directory to read it as a config.
-- A `*.jinja` file is read whole into memory, with no size cap, as a typed template file is.
+- A directory scan does not read `chat_template.json` (a multimodal processor's template); a
+  directory whose only template is there exits 2 rather than being scanned.
+- A template read from stdin has no size cap.
 
 ## Testing and verification
 

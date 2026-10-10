@@ -356,10 +356,11 @@ def read_hf_source_template(repo: str, *, revision: str = "main") -> RawTemplate
 def read_tokenizer_config_file(path: str) -> RawTemplate:
     """Read the chat template(s) from a local ``tokenizer_config.json`` (a directory scan).
 
-    Parsed as the Hub copy is. A config without a ``chat_template`` carries no template (a
-    newer repo keeps it in ``chat_template.jinja``) and yields none; a ``chat_template`` that
-    holds no ``{name, template}`` entry or string, a file over :data:`_HF_SOURCE_MAX_BYTES`,
-    and anything unreadable or unparseable raise :class:`AcquireError`.
+    Parsed as the Hub copy is. A config without a ``chat_template`` yields no template when a
+    ``chat_template.jinja`` sits beside it (the file the Hub falls back to, scanned on its
+    own), and raises :class:`TemplateNotFoundError` otherwise. A ``chat_template`` that holds
+    no ``{name, template}`` entry or string, a file over :data:`_HF_SOURCE_MAX_BYTES`, and
+    anything unreadable or unparseable raise :class:`AcquireError`.
     """
     try:
         with open(path, "rb") as fh:
@@ -377,5 +378,11 @@ def read_tokenizer_config_file(path: str) -> RawTemplate:
     if not templates and config.get("chat_template") is not None:
         raise AcquireError(
             f"{path}: chat_template is neither a string nor a list of name/template entries"
+        )
+    beside = os.path.join(os.path.dirname(path), "chat_template.jinja")
+    if not templates and not os.path.isfile(beside):
+        raise TemplateNotFoundError(
+            f"{path}: no chat_template in tokenizer_config.json and no chat_template.jinja "
+            "beside it"
         )
     return _raw(path, templates, len(data))

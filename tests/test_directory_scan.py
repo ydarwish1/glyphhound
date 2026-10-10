@@ -17,7 +17,13 @@ from pathlib import Path
 import pytest
 from jsonschema import Draft7Validator
 
-from glyphhound.acquire import AcquireError, hf_source, read_tokenizer_config_file
+from glyphhound import scan
+from glyphhound.acquire import (
+    AcquireError,
+    TemplateNotFoundError,
+    hf_source,
+    read_tokenizer_config_file,
+)
 from glyphhound.cli import main
 from glyphhound.report import render_human
 from glyphhound.scan import ScanError, ScanTarget, find_template_files, scan_source
@@ -182,6 +188,43 @@ def test_a_tokenizer_config_without_a_template_has_nothing_to_scan(scan_dir, cap
     assert targets[os.path.join("models", "chat_template.jinja")]["exit_code"] == 1
 
 
+@pytest.mark.parametrize("files", [
+    {"tokenizer_config.json": {"model_max_length": 4096}},
+    {"tokenizer_config.json": {"chat_template": None}},
+    # A multimodal repo's chat_template.json is not read; the config alone has no template.
+    {"tokenizer_config.json": {"model_max_length": 4096},
+     "chat_template.json": {"chat_template": MALICIOUS}},
+    # chat_template.jinja in another folder is not the one beside the config.
+    {"tokenizer_config.json": {}, "other/tokenizer_config.json": {"model_max_length": 1}},
+])
+def test_a_directory_that_analyzes_no_template_exits_2(scan_dir, capsys, files):
+    for rel, config in files.items():
+        _write(scan_dir / rel, json.dumps(config))
+
+    rc, out, err = _run(capsys, "models")
+
+    assert rc == 2
+    assert "no chat_template in tokenizer_config.json and no chat_template.jinja beside it" in out
+    assert "0 gating" in out and err
+
+
+def test_a_template_less_config_needs_chat_template_jinja_beside_it(scan_dir, capsys):
+    _write(scan_dir / "tokenizer_config.json", json.dumps({"model_max_length": 4096}))
+    _write(scan_dir / "sub" / "chat_template.jinja", BENIGN)
+    rc, targets = _json_targets(capsys, "models")
+    assert rc == 2
+    assert targets[os.path.join("models", "tokenizer_config.json")]["exit_code"] == 2
+    assert targets[os.path.join("models", "sub", "chat_template.jinja")]["exit_code"] == 0
+
+
+def test_read_tokenizer_config_file_without_a_template(tmp_path):
+    path = _write(tmp_path / "tokenizer_config.json", json.dumps({"model_max_length": 4096}))
+    with pytest.raises(TemplateNotFoundError, match="no chat_template"):
+        read_tokenizer_config_file(str(path))
+    _write(tmp_path / "chat_template.jinja", BENIGN)
+    assert read_tokenizer_config_file(str(path)).templates == ()
+
+
 def test_read_tokenizer_config_file_reads_every_template(tmp_path):
     path = _write(tmp_path / "tokenizer_config.json", json.dumps({"chat_template": [
         {"name": "tool_use", "template": MALICIOUS}, {"template": BENIGN},
@@ -341,13 +384,27 @@ def test_a_file_symlink_inside_the_directory_is_scanned(scan_dir, capsys):
     assert targets[os.path.join("models", "alias.jinja")]["exit_code"] == 1
 
 
-def test_a_directory_symlink_out_of_the_directory_is_not_entered(scan_dir, tmp_path, capsys):
+def test_a_directory_symlink_out_of_the_directory_is_reported_not_entered(scan_dir, tmp_path,
+                                                                          capsys):
     _write(tmp_path / "outside" / "evil.jinja", MALICIOUS)
     _symlink(scan_dir / "linked", tmp_path / "outside")
     _write(scan_dir / "ok.jinja", BENIGN)
+
     rc, targets = _json_targets(capsys, "models")
-    assert rc == 0
-    assert list(targets) == [os.path.join("models", "ok.jinja")]
+
+    assert rc == 2  # reported, and the malicious file behind it is never read
+    assert list(targets) == [os.path.join("models", "linked"), os.path.join("models", "ok.jinja")]
+    assert targets[os.path.join("models", "linked")]["error"] == (
+        "a directory symlink out of the scanned directory; not entered"
+    )
+
+
+def test_a_directory_symlink_inside_the_directory_is_walked_once(scan_dir, capsys):
+    _write(scan_dir / "real" / "evil.jinja", MALICIOUS)
+    _symlink(scan_dir / "alias", scan_dir / "real")
+    rc, targets = _json_targets(capsys, "models")
+    assert rc == 1
+    assert list(targets) == [os.path.join("models", "real", "evil.jinja")]
 
 
 def test_a_broken_or_looping_symlink_is_reported(scan_dir, capsys):
@@ -370,12 +427,72 @@ def test_the_scanned_directory_may_itself_be_a_symlink(scan_dir, tmp_path, capsy
 # --------------------------------------------------------------------------- #
 # Several refs, options, and the formats
 # --------------------------------------------------------------------------- #
-def test_a_file_typed_and_found_in_a_directory_is_scanned_once(scan_dir, capsys):
+@pytest.mark.parametrize("typed", [
+    os.path.join("models", "chat_template.jinja"),
+    os.path.join(".", "models", "chat_template.jinja"),
+    os.path.join("models", "sub", "..", "chat_template.jinja"),
+])
+@pytest.mark.parametrize("typed_first", [True, False])
+def test_a_file_typed_and_found_in_a_directory_is_scanned_once(scan_dir, capsys, typed,
+                                                               typed_first):
     _write(scan_dir / "chat_template.jinja", MALICIOUS)
-    typed = os.path.join("models", "chat_template.jinja")
-    rc, out, _ = _run(capsys, typed, "models")
+    (scan_dir / "sub").mkdir()
+    argv = [typed, "models"] if typed_first else ["models", typed]
+    rc, out, _ = _run(capsys, *argv)
     assert rc == 1
     assert out.count("=== target:") == 1
+
+
+@pytest.mark.parametrize("typed_first", [True, False])
+def test_a_typed_tokenizer_config_in_a_scanned_directory_is_read_as_a_config(scan_dir, capsys,
+                                                                              typed_first):
+    config = json.dumps({"chat_template": [{"name": "tool_use", "template": MALICIOUS}]})
+    _write(scan_dir / "tokenizer_config.json", config)
+    typed = os.path.join(".", "models", "tokenizer_config.json")
+    argv = [typed, "models"] if typed_first else ["models", typed]
+
+    rc, out, _ = _run(capsys, *argv, "--format", "json")
+
+    entries = json.loads(out)
+    assert rc == 1
+    assert [e["target"] for e in entries] == [os.path.join("models", "tokenizer_config.json")]
+    assert {f["template_name"] for f in entries[0]["findings"]} == {"tool_use"}
+
+
+def test_dotdot_after_a_symlinked_folder_is_not_folded_into_another_file(scan_dir, tmp_path,
+                                                                          capsys):
+    _write(scan_dir / "chat_template.jinja", BENIGN)
+    _write(tmp_path / "elsewhere" / "chat_template.jinja", MALICIOUS)
+    _symlink(scan_dir / "hop", tmp_path / "elsewhere" / "deep")
+    (tmp_path / "elsewhere" / "deep").mkdir()
+    typed = os.path.join("models", "hop", "..", "chat_template.jinja")  # elsewhere/...
+    rc, out, _ = _run(capsys, "models", typed)
+    assert rc == 1  # the typed malicious file is scanned, not merged with models/...
+    assert out.count("=== target:") == 3  # models/chat_template.jinja, models/hop, typed
+
+
+def test_a_symlink_to_a_typed_file_stays_a_target_of_its_own(scan_dir, capsys):
+    _write(scan_dir / "real.jinja", MALICIOUS)
+    _symlink(scan_dir / "alias.jinja", scan_dir / "real.jinja")
+    rc, out, _ = _run(capsys, os.path.join("models", "real.jinja"), "models")
+    assert rc == 1
+    assert out.count("=== target:") == 2
+
+
+@pytest.mark.parametrize("found", [True, False])
+def test_a_template_file_over_the_cap_is_reported_not_read(scan_dir, capsys, monkeypatch,
+                                                           found):
+    monkeypatch.setattr(scan, "_MAX_TEMPLATE_FILE_BYTES", 64)
+    _write(scan_dir / "at-cap.jinja", "x" * 64)
+    _write(scan_dir / "huge.jinja", MALICIOUS + " " * 64)
+    huge = os.path.join("models", "huge.jinja")
+
+    rc, out, err = _run(capsys, "models") if found else _run(capsys, huge)
+
+    assert rc == 2
+    assert "template file exceeds the 64-byte cap" in err
+    if found:
+        assert "overall: 2 target(s), 0 gating, 1 could not be scanned -> exit 2" in out
 
 
 def test_an_explicit_source_does_not_search_a_directory(scan_dir, capsys):
