@@ -169,6 +169,7 @@ cat template.jinja | python -m glyphhound scan -          # stdin
 python -m glyphhound scan a.jinja model.gguf owner/name   # several targets in one run
 python -m glyphhound scan path/to/model-dir/              # every template file under a directory
 python -m glyphhound scan models/ --format sarif --output glyphhound.sarif  # SARIF file + readable log
+python -m glyphhound scan models/ --format markdown --output comment.md     # pull request comment
 ```
 
 Several targets are scanned one by one, and each is reported under its own
@@ -213,10 +214,19 @@ missing parent directory, no permission) is reported on stderr as `--output FILE
 after the human report and exits 2, unless a finding gates the build (exit 1). A single target that cannot be scanned
 writes no FILE, as it prints no report.
 
+`--format markdown` prints the human report as Markdown, for a pull request comment: the same
+content, with a `##` heading (and with several targets, a `## target:` heading per target over a
+`###` report), findings as a list, and `**GATES CI**` on each gating finding. Every value taken
+from a template or model (targets, template names, evidence, error messages) is put in an
+inline code span, with non-printable characters escaped as in the human report and a fence
+longer than any run of backticks in the value, so Markdown, HTML, links and @mentions in it show
+as plain text. The exit code is the same as with any other format, and with `--output` the
+Markdown goes to FILE while stdout gets the human report.
+
 Options:
 
 ```
---format human|json|sarif      output format (default: human)
+--format human|json|sarif|markdown  output format (default: human)
 --output FILE                  write --format to FILE, print the human report to stdout
 --threshold critical|high      minimum severity that gates CI (default: high)
 --confirm                      render in the locked-down sandbox to confirm a finding
@@ -229,7 +239,7 @@ Exit codes (for CI): 0 = clean, 1 = a reachable finding gates the build, 2 = the
 not run. With several targets: 1 if any target gates the build, else 2 if any target could not
 be scanned, else 0.
 
-In the human report and in error messages on stderr, characters that cannot be printed (ANSI
+In the human and Markdown reports and in error messages on stderr, characters that cannot be printed (ANSI
 escapes, other control characters, bidi overrides, line breaks) in template names, evidence,
 targets and error messages are shown as Python escapes such as `\x1b`. JSON and SARIF write
 every such character as a `\u` escape, so the value reads back unchanged but cannot drive a
@@ -258,6 +268,8 @@ terminal or viewer.
 - `--output` FILE written inside a scanned directory under a matching name (such as
   `models/report.jinja`) is found as a target on the next run of the same command, which then
   exits 2 (`is one of the scan targets`). Write FILE outside the scanned directory.
+- `--format markdown` is not shortened to fit a comment: GitHub rejects a comment over 65,536
+  characters, which a scan with many findings or targets can exceed.
 
 ## Testing and verification
 

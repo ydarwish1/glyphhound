@@ -120,6 +120,12 @@ exit code is unchanged. FILE that is an existing directory or one of the scanned
 before anything is scanned; FILE that cannot be written is reported and exits 2 unless a
 finding gates (1).
 
+**Markdown report.** `--format markdown` prints the human report as Markdown for a pull request
+comment, under a heading per target when there are several. Every value taken from a template
+or model (targets, template names, evidence, error messages) is in an inline code span, so
+Markdown, HTML, links and @mentions in it show as plain text. The exit code is unchanged, and
+`--output` writes the Markdown to FILE while stdout keeps the human report.
+
 ## Standing properties
 
 These held across the phases above and are re-checked on any change:
