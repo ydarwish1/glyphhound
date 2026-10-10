@@ -15,6 +15,7 @@ import struct
 import pytest
 
 from glyphhound.acquire import (
+    AcquireError,
     ChatTemplate,
     RawTemplate,
     TemplateNotFoundError,
@@ -92,6 +93,17 @@ def test_falls_back_to_chat_template_jinja(monkeypatch):
     })
     raw = read_hf_source_template("owner/name")
     assert [t.text for t in raw.templates] == [MARKER]
+
+
+@pytest.mark.parametrize("body, message", [
+    (b"{\"chat_template\": ", "not valid JSON"),
+    (b"[" * 200_000 + b"]" * 200_000, "not valid JSON"),   # too deep to parse
+    (b"{\"chat_template\": \"\xff\xfe\"}", "not valid UTF-8"),
+])
+def test_unparseable_tokenizer_config_raises_acquire_error(monkeypatch, body, message):
+    _serve(monkeypatch, {"tokenizer_config.json": body})
+    with pytest.raises(AcquireError, match=message):
+        read_hf_source_template("owner/name")
 
 
 def test_falls_back_to_safetensors_metadata(monkeypatch):

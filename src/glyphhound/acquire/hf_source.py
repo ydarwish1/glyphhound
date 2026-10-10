@@ -238,6 +238,16 @@ def _templates_from_config(config: object) -> list[ChatTemplate]:
     return []
 
 
+def _parse_config(data: bytes, source_ref: str) -> object:
+    """``tokenizer_config.json`` bytes as parsed JSON. Strict UTF-8 (as transformers reads
+    it); bad bytes, bad JSON and nesting too deep to parse all raise :class:`AcquireError`."""
+    text = decode_utf8_or_raise(data, source_ref, "tokenizer_config.json")
+    try:
+        return json.loads(text)
+    except (ValueError, RecursionError) as exc:
+        raise AcquireError(f"{source_ref}: tokenizer_config.json is not valid JSON: {exc}") from exc
+
+
 def _safetensors_chat_template(base_url: str) -> tuple[str, int] | None:
     """``(template, bytes_read)`` from ``model.safetensors``' ``__metadata__.chat_template``,
     or ``None``. Reads only the 8-byte length prefix + the JSON header -- never the tensors."""
@@ -323,11 +333,7 @@ def read_hf_source_template(repo: str, *, revision: str = "main") -> RawTemplate
 
     config_bytes = _http_get(f"{base_url}/tokenizer_config.json")
     if config_bytes is not None:
-        try:
-            config = json.loads(config_bytes)
-        except json.JSONDecodeError as exc:
-            raise AcquireError(f"{repo}: tokenizer_config.json is not valid JSON: {exc}") from exc
-        templates = _templates_from_config(config)
+        templates = _templates_from_config(_parse_config(config_bytes, repo))
         if templates:
             return _raw(repo, templates, len(config_bytes))
 
@@ -345,3 +351,31 @@ def read_hf_source_template(repo: str, *, revision: str = "main") -> RawTemplate
         f"{repo}: no chat_template in tokenizer_config.json, chat_template.jinja, or "
         "the safetensors metadata"
     )
+
+
+def read_tokenizer_config_file(path: str) -> RawTemplate:
+    """Read the chat template(s) from a local ``tokenizer_config.json`` (a directory scan).
+
+    Parsed as the Hub copy is. A config without a ``chat_template`` carries no template (a
+    newer repo keeps it in ``chat_template.jinja``) and yields none; a ``chat_template`` that
+    holds no ``{name, template}`` entry or string, a file over :data:`_HF_SOURCE_MAX_BYTES`,
+    and anything unreadable or unparseable raise :class:`AcquireError`.
+    """
+    try:
+        with open(path, "rb") as fh:
+            data = fh.read(_HF_SOURCE_MAX_BYTES + 1)
+    except OSError as exc:
+        raise AcquireError(f"{path}: cannot read tokenizer_config.json ({exc})") from exc
+    if len(data) > _HF_SOURCE_MAX_BYTES:
+        raise AcquireError(
+            f"{path}: tokenizer_config.json exceeds the {_HF_SOURCE_MAX_BYTES}-byte cap"
+        )
+    config = _parse_config(data, path)
+    if not isinstance(config, dict):
+        raise AcquireError(f"{path}: tokenizer_config.json is not a JSON object")
+    templates = _templates_from_config(config)
+    if not templates and config.get("chat_template") is not None:
+        raise AcquireError(
+            f"{path}: chat_template is neither a string nor a list of name/template entries"
+        )
+    return _raw(path, templates, len(data))

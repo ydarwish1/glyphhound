@@ -9,6 +9,9 @@ Two entry points:
   **every** template it carries (default + named), and build one report. The acquirer
   only fetches the metadata block, so this never downloads the weights.
 
+:func:`find_template_files` lists the template-bearing files under a local directory, each
+then scanned as a target of its own.
+
 Both paths only ever *parse* a template (the analyzer walks the AST; it never renders),
 so reading a malicious model cannot execute it. The optional, off-by-default ``confirm``
 stage (Phase 6) is the only thing that renders, and it does so in a locked-down subprocess.
@@ -18,6 +21,8 @@ from __future__ import annotations
 
 import os
 import re
+import stat
+from dataclasses import dataclass
 
 from .acquire import (
     ChatTemplate,
@@ -25,6 +30,7 @@ from .acquire import (
     read_gguf_template,
     read_hf_source_template,
     read_ollama_template,
+    read_tokenizer_config_file,
 )
 from .acquire.hf_source import smallest_gguf_filename
 from .analyze import analyze_template
@@ -33,6 +39,12 @@ from .report import DEFAULT_SEVERITY_THRESHOLD, Report, make_report
 # The source kinds the CLI's --source flag accepts (besides "auto").
 SOURCES = ("file", "gguf", "gguf-url", "hf", "ollama")
 AUTO = "auto"
+
+# A local tokenizer_config.json found by a directory scan (not a --source choice).
+TOKENIZER_CONFIG = "tokenizer-config"
+_TOKENIZER_CONFIG_NAME = "tokenizer_config.json"
+# File suffixes a directory scan reads (matched case-insensitively), and how.
+_DIRECTORY_SUFFIXES = ((".jinja", "file"), (".gguf", "gguf"))
 
 # A Hugging Face repo id is exactly ``owner/name`` (one slash, neither segment a path
 # fragment). An Ollama model is ``name[:tag]`` (no slash). Both start with an
@@ -47,6 +59,16 @@ class ScanError(Exception):
     Distinct from :class:`~.acquire.AcquireError` (which is raised once acquisition is
     under way): a ``ScanError`` means we could not even decide *how* to fetch the template.
     """
+
+
+@dataclass(frozen=True)
+class ScanTarget:
+    """One target to scan: a reference (or a file a directory scan found), the source kind
+    to read it as, or why it cannot be read."""
+
+    ref: str
+    source: str = AUTO
+    error: str | None = None
 
 
 def _analyze_one(text: str, *, template_name: str | None, confirm: bool):
@@ -123,12 +145,81 @@ def _acquire(ref: str, *, source: str, filename: str | None, revision: str) -> R
         return read_ollama_template(ref)
     if kind == "file":
         return _wrap_template_file(ref)
+    if kind == TOKENIZER_CONFIG:
+        return read_tokenizer_config_file(ref)
     raise ScanError(f"unknown source type {source!r}")
 
 
 def resolve_source(ref: str, source: str = AUTO) -> str:
     """The source kind ``ref`` is read as: ``source`` itself, or the detected kind for auto."""
     return source if source != AUTO else _detect_source(ref)
+
+
+def is_directory(ref: str, source: str = AUTO) -> bool:
+    """True when ``ref`` is a local directory to search: auto-detect only, never a URL."""
+    return (source == AUTO and not ref.startswith(("http://", "https://"))
+            and os.path.isdir(ref))
+
+
+def find_template_files(directory: str) -> list[ScanTarget]:
+    """Every ``*.jinja``, ``*.gguf`` and ``tokenizer_config.json`` under ``directory``.
+
+    Walked in sorted order without entering symlinked directories. Nothing is skipped
+    silently: a subdirectory that cannot be listed, a match that is a symlink out of
+    ``directory`` (not followed) and a match that is not a readable regular file are each
+    returned with an ``error``. Raises :class:`ScanError` if nothing matches.
+    """
+    root = os.path.realpath(directory)
+    found: list[ScanTarget] = []
+
+    def unlisted(exc: OSError) -> None:
+        path = exc.filename or directory
+        reason = f"{path!r}: cannot list directory ({exc.strerror or exc})"
+        found.append(ScanTarget(path, error=reason))
+
+    for parent, dirnames, filenames in os.walk(directory, onerror=unlisted):
+        dirnames.sort()
+        for name in sorted(filenames):
+            source = _directory_source(name)
+            if source is not None:
+                path = os.path.join(parent, name)
+                found.append(ScanTarget(path, source, _unreadable_reason(path, root)))
+    if not found:
+        raise ScanError(
+            f"{directory!r}: no *.jinja, tokenizer_config.json or *.gguf file under it"
+        )
+    return found
+
+
+def _directory_source(name: str) -> str | None:
+    """The source kind a directory scan reads the file ``name`` as, or None to pass it by."""
+    if name == _TOKENIZER_CONFIG_NAME:
+        return TOKENIZER_CONFIG
+    for suffix, source in _DIRECTORY_SUFFIXES:
+        if name.lower().endswith(suffix):
+            return source
+    return None
+
+
+def _unreadable_reason(path: str, root: str) -> str | None:
+    """Why a directory scan must not read ``path`` (under the real directory ``root``)."""
+    if not _is_within(os.path.realpath(path), root):
+        return f"{path!r}: a symlink out of the scanned directory; not followed"
+    try:
+        mode = os.stat(path).st_mode
+    except OSError as exc:
+        return f"{path!r}: cannot read ({exc.strerror or exc})"
+    if not stat.S_ISREG(mode):
+        return f"{path!r}: not a regular file"
+    return None
+
+
+def _is_within(path: str, root: str) -> bool:
+    """True if the real path ``path`` is ``root`` or under it."""
+    try:
+        return os.path.commonpath([path, root]) == root
+    except ValueError:  # on another drive (Windows)
+        return False
 
 
 def _detect_source(ref: str) -> str:

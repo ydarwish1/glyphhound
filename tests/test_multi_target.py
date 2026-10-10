@@ -162,7 +162,7 @@ def test_odd_inputs_among_targets_are_reported_not_crashed(tmp_path, capsys):
     assert "summary: 0 finding(s)" in out  # the empty template is scanned and clean
     assert "overall: 4 target(s), 0 gating, 3 could not be scanned -> exit 2" in out
     assert "not a valid UTF-8 template file" in out
-    assert "is not a file" in out
+    assert "no *.jinja, tokenizer_config.json or *.gguf file under it" in out
     assert len(err.splitlines()) == 3
 
 
