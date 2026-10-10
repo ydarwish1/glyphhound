@@ -204,12 +204,30 @@ def test_a_target_found_in_a_directory_is_never_overwritten(tmp_path, capsys):
     assert template.read_text(encoding="utf-8") == MALICIOUS
 
 
+def test_file_written_inside_the_scanned_directory_stops_the_next_run(tmp_path, capsys):
+    models = tmp_path / "models"
+    models.mkdir()
+    (models / "chat_template.jinja").write_text(MALICIOUS, encoding="utf-8")
+    out_file = models / "report.jinja"
+    argv = [str(models), "--output", str(out_file)]
+
+    first_rc, _, _ = _run(capsys, *argv)
+    first_report = out_file.read_text(encoding="utf-8")
+    rc, out, err = _run(capsys, *argv)
+
+    assert first_rc == 1
+    assert rc == 2
+    assert out == ""
+    assert err == f"glyphhound: --output {out_file}: is one of the scan targets\n"
+    assert out_file.read_text(encoding="utf-8") == first_report
+
+
 def test_a_missing_parent_directory_exits_2_after_printing(tmp_path, capsys):
     out_file = tmp_path / "missing" / "report.sarif"
     rc, out, err = _run(capsys, BENIGN_PATH, "--format", "sarif", "--output", str(out_file))
     assert rc == 2
     assert out == render_human(scan_source(BENIGN_PATH))
-    assert err == f"glyphhound: {out_file}: No such file or directory\n"
+    assert err == f"glyphhound: --output {out_file}: No such file or directory\n"
     assert not out_file.exists()
 
 
@@ -218,7 +236,7 @@ def test_a_gating_finding_still_exits_1_when_file_cannot_be_written(tmp_path, ca
     rc, out, err = _run(capsys, MALICIOUS_PATH, BENIGN_PATH, "--output", str(out_file))
     assert rc == 1
     assert "-> exit 1" in out
-    assert "No such file or directory" in err
+    assert err == f"glyphhound: --output {out_file}: No such file or directory\n"
 
 
 @needs_posix_permissions
@@ -229,5 +247,5 @@ def test_a_file_without_write_permission_exits_2(tmp_path, capsys):
     rc, out, err = _run(capsys, BENIGN_PATH, "--format", "json", "--output", str(out_file))
     assert rc == 2
     assert "summary: 0 finding(s)" in out
-    assert err == f"glyphhound: {out_file}: Permission denied\n"
+    assert err == f"glyphhound: --output {out_file}: Permission denied\n"
     assert out_file.read_text(encoding="utf-8") == "old"

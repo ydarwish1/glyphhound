@@ -209,8 +209,8 @@ or not (`a/x.jinja`, `./a/x.jinja`), or both typed and found in a directory, is 
 report to stdout, so one CI run can upload SARIF and show a readable log. The exit code is the
 same as without it. FILE that is an existing directory (or a symlink to one), or that is one of
 the files being scanned, exits 2 before anything is scanned. FILE that cannot be written (a
-missing parent directory, no permission) is reported on stderr after the human report and
-exits 2, unless a finding gates the build (exit 1). A single target that cannot be scanned
+missing parent directory, no permission) is reported on stderr as `--output FILE: <reason>`
+after the human report and exits 2, unless a finding gates the build (exit 1). A single target that cannot be scanned
 writes no FILE, as it prints no report.
 
 Options:
@@ -256,7 +256,8 @@ terminal or viewer.
   so a later CI step that uploads FILE regardless of the exit code uploads the old report.
 - `--output -` writes a file named `-`; it does not mean stdout.
 - `--output` FILE written inside a scanned directory under a matching name (such as
-  `report.jinja`) is scanned as a template on the next run.
+  `models/report.jinja`) is found as a target on the next run of the same command, which then
+  exits 2 (`is one of the scan targets`). Write FILE outside the scanned directory.
 
 ## Testing and verification
 

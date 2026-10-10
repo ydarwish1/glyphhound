@@ -223,7 +223,8 @@ def _emit(renderers: dict, result: Report | list[TargetResult],
             out.write(renderers[args.format](result))
     except OSError as exc:
         reason = exc.strerror or str(exc)
-        sys.stderr.write(f"glyphhound: {display_text(args.output)}: {display_text(reason)}\n")
+        sys.stderr.write(
+            f"glyphhound: --output {display_text(args.output)}: {display_text(reason)}\n")
         return False
     return True
 
