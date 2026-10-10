@@ -5,7 +5,7 @@ Usage::
     python -m glyphhound scan <ref | dir | -> [<ref> ...]
                               [--source auto|file|gguf|gguf-url|hf|ollama]
                               [--file NAME.gguf] [--revision REV]
-                              [--format human|json|sarif] [--output FILE]
+                              [--format human|json|sarif|markdown] [--output FILE]
                               [--threshold critical|high]
                               [--template-name NAME] [--confirm]
 
@@ -32,6 +32,9 @@ exits 2.
 ``--output FILE`` writes the ``--format`` report to FILE and prints the human report to stdout;
 the exit code is the same. FILE that is a directory or one of the targets exits 2 before any
 scan, and FILE that cannot be written exits 2 unless a finding gates CI (1).
+
+``--format markdown`` is the human report as Markdown, for a pull request comment; every value
+taken from a template or model is in an inline code span, so it shows as plain text.
 """
 
 from __future__ import annotations
@@ -52,6 +55,8 @@ from .report import (
     render_human_targets,
     render_json,
     render_json_targets,
+    render_markdown,
+    render_markdown_targets,
     render_sarif,
     render_sarif_targets,
     targets_exit_code,
@@ -69,9 +74,10 @@ from .scan import (
     scan_template_string,
 )
 
-_RENDERERS = {"human": render_human, "json": render_json, "sarif": render_sarif}
+_RENDERERS = {"human": render_human, "json": render_json, "sarif": render_sarif,
+              "markdown": render_markdown}
 _TARGET_RENDERERS = {"human": render_human_targets, "json": render_json_targets,
-                     "sarif": render_sarif_targets}
+                     "sarif": render_sarif_targets, "markdown": render_markdown_targets}
 
 # What makes one target unscannable (exit 2) rather than a crash.
 _SCAN_ERRORS = (ScanError, AcquireError, ParseError, OSError)
@@ -103,7 +109,8 @@ def _build_parser() -> argparse.ArgumentParser:
                       help="git revision / commit SHA for a Hugging Face repo "
                            "(default: main; pin a SHA for determinism)")
     scan.add_argument("--format", choices=list(_RENDERERS), default="human",
-                      help="output format (default: human)")
+                      help="output format; markdown is the human report for a pull request "
+                           "comment (default: human)")
     scan.add_argument("--output", metavar="FILE", default=None,
                       help="write the --format report to FILE (replacing it) and print the "
                            "human report to stdout; the exit code is unchanged")
