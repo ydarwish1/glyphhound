@@ -114,6 +114,12 @@ template and no `chat_template.jinja` beside it. A template file over 32 MiB now
 of being read whole, and two spellings of one local file are scanned once. A Hub
 `tokenizer_config.json` that is not UTF-8 or nests too deeply to parse now exits 2 cleanly too.
 
+**Write the report to a file.** `--output FILE` writes the `--format` report to FILE and still
+prints the human report to stdout, so one CI run can upload SARIF and show a readable log. The
+exit code is unchanged. FILE that is an existing directory or one of the scanned files exits 2
+before anything is scanned; FILE that cannot be written is reported and exits 2 unless a
+finding gates (1).
+
 ## Standing properties
 
 These held across the phases above and are re-checked on any change:
