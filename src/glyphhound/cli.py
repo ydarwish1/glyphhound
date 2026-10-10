@@ -5,7 +5,7 @@ Usage::
     python -m glyphhound scan <ref | dir | -> [<ref> ...]
                               [--source auto|file|gguf|gguf-url|hf|ollama]
                               [--file NAME.gguf] [--revision REV]
-                              [--format human|json|sarif]
+                              [--format human|json|sarif] [--output FILE]
                               [--threshold critical|high]
                               [--template-name NAME] [--confirm]
 
@@ -28,6 +28,10 @@ A directory (with the default ``--source auto``) stands for every ``*.jinja``, `
 ``tokenizer_config.json`` file under it, each scanned as a target of its own; symlinks out of
 it are not followed but reported. A match that cannot be read, or a directory with no match,
 exits 2.
+
+``--output FILE`` writes the ``--format`` report to FILE and prints the human report to stdout;
+the exit code is the same. FILE that is a directory or one of the targets exits 2 before any
+scan, and FILE that cannot be written exits 2 unless a finding gates CI (1).
 """
 
 from __future__ import annotations
@@ -100,6 +104,9 @@ def _build_parser() -> argparse.ArgumentParser:
                            "(default: main; pin a SHA for determinism)")
     scan.add_argument("--format", choices=list(_RENDERERS), default="human",
                       help="output format (default: human)")
+    scan.add_argument("--output", metavar="FILE", default=None,
+                      help="write the --format report to FILE (replacing it) and print the "
+                           "human report to stdout; the exit code is unchanged")
     scan.add_argument("--threshold", choices=[CRITICAL, HIGH], default=HIGH,
                       help="minimum severity of a reachable finding that gates CI (default: high)")
     scan.add_argument("--template-name", default=None,
@@ -184,6 +191,48 @@ def _scan_target(target: ScanTarget, args: argparse.Namespace) -> TargetResult:
         return _failed_target(ref, str(exc))
 
 
+def _same_file(path: str, ref: str) -> bool:
+    """Whether ``ref`` is the local file at ``path`` (through any symlink or hard link)."""
+    try:
+        return ref != "-" and os.path.samefile(path, ref)
+    except OSError:  # ``ref`` is not a local file (a repo id, URL, model name) or is unreadable
+        return False
+
+
+def _output_problem(path: str | None, targets: list[ScanTarget]) -> str | None:
+    """Why ``--output FILE`` must not be written, checked before any scan; else None."""
+    if path is None:
+        return None
+    if os.path.isdir(path):
+        return "is a directory"
+    if os.path.exists(path) and any(_same_file(path, target.ref) for target in targets):
+        return "is one of the scan targets"
+    return None
+
+
+def _emit(renderers: dict, result: Report | list[TargetResult],
+          args: argparse.Namespace) -> bool:
+    """Print ``result`` in ``--format``; with ``--output`` print the human report and write
+    ``--format`` to FILE instead. False (told on stderr) if FILE cannot be written."""
+    if args.output is None:
+        sys.stdout.write(renderers[args.format](result))
+        return True
+    sys.stdout.write(renderers["human"](result))
+    try:
+        with open(args.output, "w", encoding="utf-8") as out:
+            out.write(renderers[args.format](result))
+    except OSError as exc:
+        reason = exc.strerror or str(exc)
+        sys.stderr.write(f"glyphhound: {display_text(args.output)}: {display_text(reason)}\n")
+        return False
+    return True
+
+
+def _exit_code(exit_code: int, written: bool) -> int:
+    """The scan's exit code, or 2 when ``--output`` failed and no finding gates CI."""
+    return exit_code if written or exit_code == 1 else 2
+
+
 def main(argv: list[str] | None = None) -> int:
     """Run the CLI. Returns 0 (clean) / 1 (a finding gates CI) / 2 (the scan could not run)."""
     args = _build_parser().parse_args(argv)
@@ -191,10 +240,17 @@ def main(argv: list[str] | None = None) -> int:
         return 2  # unreachable: argparse requires a subcommand
 
     refs = list(dict.fromkeys(args.refs))  # stdin can only be read once
-    if len(refs) > 1 or _is_directory(refs[0], args):
-        results = [_scan_target(target, args) for target in _targets(refs, args)]
-        sys.stdout.write(_TARGET_RENDERERS[args.format](results))
-        return targets_exit_code(results)
+    several = len(refs) > 1 or _is_directory(refs[0], args)
+    targets = _targets(refs, args) if several else [ScanTarget(refs[0], args.source)]
+    problem = _output_problem(args.output, targets)
+    if problem is not None:
+        sys.stderr.write(f"glyphhound: --output {display_text(args.output)}: {problem}\n")
+        return 2
+
+    if several:
+        results = [_scan_target(target, args) for target in targets]
+        written = _emit(_TARGET_RENDERERS, results, args)
+        return _exit_code(targets_exit_code(results), written)
 
     try:
         report = _scan(refs[0], args.source, args)
@@ -202,5 +258,4 @@ def main(argv: list[str] | None = None) -> int:
         sys.stderr.write(f"glyphhound: {display_text(str(exc))}\n")
         return 2
 
-    sys.stdout.write(_RENDERERS[args.format](report))
-    return report.exit_code
+    return _exit_code(report.exit_code, _emit(_RENDERERS, report, args))

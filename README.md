@@ -168,6 +168,7 @@ python -m glyphhound scan template.jinja                  # a local template fil
 cat template.jinja | python -m glyphhound scan -          # stdin
 python -m glyphhound scan a.jinja model.gguf owner/name   # several targets in one run
 python -m glyphhound scan path/to/model-dir/              # every template file under a directory
+python -m glyphhound scan models/ --format sarif --output glyphhound.sarif  # SARIF file + readable log
 ```
 
 Several targets are scanned one by one, and each is reported under its own
@@ -204,10 +205,19 @@ is searched only with the default `--source auto`. A local file given twice, spe
 or not (`a/x.jinja`, `./a/x.jinja`), or both typed and found in a directory, is scanned once; a
 `tokenizer_config.json` found in a directory is then read as a config even if it was typed too.
 
+`--output FILE` writes the `--format` report to FILE, replacing it, and still prints the human
+report to stdout, so one CI run can upload SARIF and show a readable log. The exit code is the
+same as without it. FILE that is an existing directory (or a symlink to one), or that is one of
+the files being scanned, exits 2 before anything is scanned. FILE that cannot be written (a
+missing parent directory, no permission) is reported on stderr after the human report and
+exits 2, unless a finding gates the build (exit 1). A single target that cannot be scanned
+writes no FILE, as it prints no report.
+
 Options:
 
 ```
 --format human|json|sarif      output format (default: human)
+--output FILE                  write --format to FILE, print the human report to stdout
 --threshold critical|high      minimum severity that gates CI (default: high)
 --confirm                      render in the locked-down sandbox to confirm a finding
 --revision <sha>               pin a Hugging Face commit for reproducibility
@@ -242,6 +252,11 @@ terminal or viewer.
 - A directory scan does not read `chat_template.json` (a multimodal processor's template); a
   directory whose only template is there exits 2 rather than being scanned.
 - A template read from stdin has no size cap.
+- `--output` leaves an existing FILE as it was when a single target cannot be scanned (exit 2),
+  so a later CI step that uploads FILE regardless of the exit code uploads the old report.
+- `--output -` writes a file named `-`; it does not mean stdout.
+- `--output` FILE written inside a scanned directory under a matching name (such as
+  `report.jinja`) is scanned as a template on the next run.
 
 ## Testing and verification
 
