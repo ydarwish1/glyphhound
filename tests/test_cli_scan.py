@@ -224,11 +224,11 @@ def test_cli_missing_file_explicit_source_exits_2(capsys):
     assert "glyphhound:" in err
 
 
-def test_cli_directory_exits_2(tmp_path, capsys):
+def test_cli_empty_directory_exits_2(tmp_path, capsys):
     rc = main(["scan", str(tmp_path)])
     err = capsys.readouterr().err
     assert rc == 2
-    assert "not a file" in err
+    assert "no *.jinja, tokenizer_config.json or *.gguf file under it" in err
 
 
 def test_cli_url_error_exits_2(monkeypatch, capsys):

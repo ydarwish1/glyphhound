@@ -4,7 +4,7 @@ See ARCHITECTURE.md section "Stage 1 -- ACQUIRER".
 """
 
 from .gguf import read_gguf_template
-from .hf_source import read_hf_source_template
+from .hf_source import read_hf_source_template, read_tokenizer_config_file
 from .models import (
     AcquireError,
     ChatTemplate,
@@ -24,6 +24,7 @@ __all__ = [
     "WeightsLoadedError",
     "read_gguf_template",
     "read_hf_source_template",
+    "read_tokenizer_config_file",
     "read_ollama_template",
     "default_models_dir",
 ]

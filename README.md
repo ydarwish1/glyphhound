@@ -167,6 +167,7 @@ python -m glyphhound scan ollama-model-name
 python -m glyphhound scan template.jinja                  # a local template file
 cat template.jinja | python -m glyphhound scan -          # stdin
 python -m glyphhound scan a.jinja model.gguf owner/name   # several targets in one run
+python -m glyphhound scan path/to/model-dir/              # every template file under a directory
 ```
 
 Several targets are scanned one by one, and each is reported under its own
@@ -184,6 +185,24 @@ a line region only when its target is the raw template file; for any other targe
 URL GGUF, a Hugging Face repo, an Ollama model, stdin) the template line is the location's
 `templateLine` property instead. With one target, every format is the same as
 before. A stdin template that is not UTF-8 is reported and exits 2, as a file does.
+
+A local directory is searched, subdirectories included, for `*.jinja` (so `chat_template.jinja`
+too), `tokenizer_config.json` and `*.gguf` files (the suffixes in any case). Each file found is
+a target of its own, reported under its path in sorted order exactly as several targets are,
+even when only one file is found. A `tokenizer_config.json` is read as the Hub's copy is: every
+template in its `chat_template` (a string or a list of named templates) is scanned. One without
+a `chat_template` reports no findings when a `chat_template.jinja` sits beside it (newer repos
+keep the template there, and it is scanned on its own); otherwise it holds no template to scan
+and exits 2, as a GGUF without a template does. Symlinked directories are not entered (one that
+points inside the directory is walked at its real path), and a symlink, file or directory, that
+points out of the directory is not followed: it is reported as a target that could not be
+scanned. A matching file that cannot be read or parsed (no permission, not a regular file, bad
+UTF-8 or JSON, a template file or `tokenizer_config.json` over 32 MiB, a truncated GGUF), and a
+subdirectory that cannot be listed, is reported the same way and makes the scan exit 2; it is
+never skipped. A directory with no matching file exits 2 with a message saying so. A directory
+is searched only with the default `--source auto`. A local file given twice, spelled the same
+or not (`a/x.jinja`, `./a/x.jinja`), or both typed and found in a directory, is scanned once; a
+`tokenizer_config.json` found in a directory is then read as a config even if it was typed too.
 
 Options:
 
@@ -208,13 +227,21 @@ terminal or viewer.
 
 ### Known limits
 
-- Targets are compared as typed: `a.jinja` and `./a.jinja` are two targets and are scanned
-  twice.
+- A symlink and the file it points to are two targets and are scanned twice.
 - In multi-target SARIF a Hugging Face, Ollama or URL target is listed as an artifact URI that
   is not a file in your repository, so code scanning cannot link it to a source file. Pass
   local files as paths relative to the repository root for code scanning to link them.
 - In multi-target SARIF a stdin target is the artifact URI `-`, which code scanning reads as a
   file named `-` in the repository.
+- A directory scan checks symlinks when it lists the directory: a file that is replaced by a
+  symlink between the listing and the read is read where the symlink points.
+- A symlinked directory is not entered even when it points inside the scanned directory; its
+  files are scanned under their real path instead.
+- A `tokenizer_config.json` typed as a target on its own (not found in a directory) is still
+  read as a raw template, as before; scan its directory to read it as a config.
+- A directory scan does not read `chat_template.json` (a multimodal processor's template); a
+  directory whose only template is there exits 2 rather than being scanned.
+- A template read from stdin has no size cap.
 
 ## Testing and verification
 
